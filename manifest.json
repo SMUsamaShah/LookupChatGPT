@@ -1,18 +1,17 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Look Up Extension",
   "version": "1.0",
   "description": "A simple extension to look up text selections",
-  "permissions": ["activeTab", "contextMenus", "https://api.openai.com/*", "storage"],
+  "permissions": ["activeTab", "contextMenus", "storage"],
+  "host_permissions": ["https://api.openai.com/*"],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js"
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": ["popup.js"],
     "run_at": "document_end"
   }],
-  "browser_action": {},
   "options_page": "options.html"
 }
