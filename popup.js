@@ -1,17 +1,20 @@
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.action === "displayResult") {
-    displayResult(request.data, request.style);
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  if (message.action === "displayResult") {
+    displayResult(message);
   }
 });
 
-function displayResult(result, popupStyle) {
+function displayResult(message) {
+  const result = message.data;
+  const popupStyle = message.popupStyle;
+  const selectedText = message.selectedText;
+  const defaultStyle = "color: black; position: fixed; top: 10px; left: 10px; padding: 10px; padding-right: 20px; background-color: white; border: 1px solid black; z-index: 999999; font-family: Arial, sans-serif;";
   const dismissButtonHTML = '<button style="position: absolute; top: 0; right: 0;">x</button>';
-  const defaultStyle = "color: black; position: fixed; top: 10px; left: 10px; padding: 10px; background-color: white; border: 1px solid black; z-index: 999999; font-family: Arial, sans-serif;";
   
   const messageContainer = document.createElement("div");
   messageContainer.innerHTML = `
     <div id="result-message" style="${popupStyle || defaultStyle}">
-      ${result}
+      <b>${selectedText}</b>: ${result}
       ${dismissButtonHTML}
     </div>
   `;
@@ -24,5 +27,5 @@ function displayResult(result, popupStyle) {
   });
 
   // remove result after 15 seconds
-  setTimeout(() => messageContainer.remove(), 15000);
+  //setTimeout(() => messageContainer.remove(), 15000);
 }

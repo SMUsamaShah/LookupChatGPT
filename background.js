@@ -1,35 +1,26 @@
-function addContextMenus() {
-  chrome.storage.local.get({promptData: []}, function (result) {
-    result.promptData.forEach((entry, i) => {
-      if (entry.enabled == false) return;
-      
-      chrome.contextMenus.create({
-        id: `custom-prompt-${i}`,
-        title: entry.title,
-        contexts: ['selection'],
+chrome.storage.local.get(null, createContextMenus);
+chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
+chrome.storage.onChanged.addListener(handleLocalStorageChanges);
+
+// Remove all existing contextMenus and add the new ones from local storage
+function createContextMenus(result) {
+  chrome.contextMenus.removeAll(function () {
+    // chrome.storage.local.get(null, function (result) {
+      result.promptData.forEach((entry, i) => {
+        if (!entry.enabled) return;
+        chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: ['selection'], });
       });
-    });
+    // });
   });
 }
 
-//for debugging local storage
-//chrome.storage.local.get(null, function callback(items) { console.log(items) });
-
-// Remove all existing contextMenus and add the new ones from local storage
-function reCreateContextMenus() {
-  chrome.contextMenus.removeAll(addContextMenus);
+function handleLocalStorageChanges(changes, _) {
+  for (let key in changes) {
+    if (key === 'promptData') chrome.storage.local.get({promptData: []}, createContextMenus);
+  }
 }
 
-reCreateContextMenus();
-
-// Add a listener for when storage changes
-chrome.storage.onChanged.addListener(function (changes, _) {
-  for (let key in changes) {
-    if (key === 'promptData') reCreateContextMenus();
-  }
-});
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+function handleContextMenuClicked(info, tab) {
   const menuItemIdParts = info.menuItemId.split('-');
   const messageId = menuItemIdParts[menuItemIdParts.length - 1];
 
@@ -41,20 +32,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     const popupStyle = prompt.popupStyle || result.defaultPopupStyle;
     sendRequestToAPI(selectedText, tab.id, prompt.content, token, promptSettings, popupStyle);
   });
-});
+};
 
 function sendRequestToAPI(selectedText, tabId, systemPrompt, token, promptSettings, popupStyle) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [
-      {
-        'role': 'system',
-        'content': systemPrompt
-      },
-      {
-        'role': 'user',
-        'content': selectedText
-      }
+      { 'role': 'system', 'content': systemPrompt },
+      { 'role': 'user', 'content': selectedText }
     ],
   };
   const settingsOverride = JSON.parse(promptSettings);
@@ -73,6 +58,7 @@ function sendRequestToAPI(selectedText, tabId, systemPrompt, token, promptSettin
     "credentials": "include"
   })
   .then(response => response.json())
-  .then(resJson => chrome.tabs.sendMessage(tabId, {action: "displayResult", data: resJson.choices[0].message.content, style: popupStyle}))
+  .then(resJson => chrome.tabs.sendMessage(tabId, { action: "displayResult", data: resJson.choices[0].message.content, popupStyle, selectedText }))
   .catch(error => console.error(error));
 }
+
