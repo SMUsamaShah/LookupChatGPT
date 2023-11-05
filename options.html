@@ -1,14 +1,41 @@
 <!DOCTYPE html>
 <html>
 <body>
+<style type="text/css">
+    table input[type="text"],
+    table input[type="number"],
+    table input[type="email"],
+    table textarea {
+        width: 100%; /* Make the input fields fill the width of the cell */
+        box-sizing: border-box; /* Include padding and border within the specified width */
+    }
+</style>
 <form id="customMessagesForm">
     <h1>ChatGPT System Prompts</h1>
-    <label for="authToken">OpenAI API token:</label>
+    <label for="authToken">OpenAI API token:</label><br/>
     <input type="password" id="authToken"><br/>
-    <label for="promptSettings">Default Settings: </label>
+    <label for="promptSettings">Default Settings: </label><br/>
     <textarea id="promptSettings"></textarea><br/>
-    <label for="popupStyle">Default Popup Style: </label>
+    <label for="popupStyle">Default Popup Style: </label><br/>
     <textarea id="popupStyle"></textarea><br/>
+    <br/>
+
+    <table id="promptTable" border="1" >
+        <thead>
+        <tr>
+            <th>Enable</th>
+            <th>Title</th>
+            <th>System Prompt</th>
+            <th>Prompt Settings</th>
+            <th>Popup Style</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- Rows will be added here dynamically -->
+        </tbody>
+    </table>
+    
     <button id="addNewPrompt">Add another system prompt</button>
     <button type="submit">Save</button>
 </form>

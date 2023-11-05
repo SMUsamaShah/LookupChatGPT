@@ -16,11 +16,11 @@ form.addEventListener('submit', function (event) {
   const newPromptData = [];
   const row = document.querySelectorAll(".inputGroup");
   row.forEach((group) => {
-    const title = group.querySelector(".title").value;
-    const content = group.querySelector(".content").value;
     const enabled = group.querySelector(".enabled").checked;
-    const popupStyle = group.querySelector(".popupStyle").value;
-    const promptSettings = group.querySelector(".promptSettings").value;
+    const title = group.querySelector(".title").innerText;
+    const content = group.querySelector(".content").innerText;
+    const popupStyle = group.querySelector(".popupStyle").innerText;
+    const promptSettings = group.querySelector(".promptSettings").innerText;
     newPromptData.push({title, content, enabled, promptSettings, popupStyle});
   });
   const token = document.getElementById('authToken').value;
@@ -40,7 +40,9 @@ addButton.addEventListener('click', function (event) {
 document.addEventListener('click', function (event) {
   if (event.target && event.target.matches(".deleteButton")) {
     event.preventDefault();
-    event.target.parentElement.remove();
+    // event.target.parentElement.remove();
+    const row = event.target.parentElement.parentElement;
+    row.parentNode.removeChild(row);
   }
 });
 
@@ -50,22 +52,30 @@ function appendNewRowToForm(message) {
   const enabled = message.enabled || true;
   const promptSettings = message.promptSettings || "";
   const popupStyle = message.popupStyle || "";
+
+  const table = document.querySelector('#promptTable tbody');
   
-  const newInputGroup = document.createElement('div');
-  newInputGroup.setAttribute("style", "display: flex; align-items: flex-start;border-bottom-style: solid;border-bottom-width: thin;");
-  newInputGroup.classList.add('inputGroup');
-  newInputGroup.innerHTML = `
-        <input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable">
-        <label>Title: </label>
-        <input type="text" class="title" value="${title}">
-        <label>System Prompt: </label>
-        <textarea type="text" class="content" rows="1" >${content}</textarea>
-        <label>Prompt Settings: </label>
-        <textarea type="text" class="promptSettings">${promptSettings}</textarea>
-        <label>Popup Style: </label>
-        <textarea type="text" class="popupStyle">${popupStyle}</textarea>
-        <button class="deleteButton">Delete</button>
+  // const newRow = `
+  //   <tr class="inputGroup">
+  //       <td style="width: 5%;"><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
+  //       <td style="width: 10%;"><input type="text" class="title" value="${title}"></td>
+  //       <td style="width: 30%;"><textarea type="text" class="content">${content}</textarea></td>
+  //       <td style="width: 30%;"><textarea type="text" class="promptSettings">${promptSettings}</textarea></td>
+  //       <td style="width: 10%;"><textarea type="text" class="popupStyle">${popupStyle}</textarea></td>
+  //       <td style="width: 5%;"><button class="deleteButton">Delete</button></td>
+  //   </tr>
+  //   `;
+
+  const newRow = `
+    <tr class="inputGroup">
+        <td style="width: 5%;"><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
+        <td style="width: 10%;"><div contenteditable="true" class="title">${title}</div></td>
+        <td style="width: 30%;"><div contenteditable="true" class="content">${content}</div></td>
+        <td style="width: 30%;"><div contenteditable="true" class="promptSettings">${promptSettings}</div></td>
+        <td style="width: 10%;"><div contenteditable="true" class="popupStyle">${popupStyle}</div></td>
+        <td style="width: 5%;"><button class="deleteButton">Delete</button></td>
+    </tr>
     `;
 
-  addButton.parentElement.insertBefore(newInputGroup, addButton);
+  table.insertAdjacentHTML('beforeend', newRow);
 }
