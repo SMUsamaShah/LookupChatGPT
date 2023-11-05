@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Look Up Extension",
+  "name": "Lookup via ChatGPT",
   "version": "1.0",
-  "description": "A simple extension to look up text selections",
+  "description": "A simple extension to look up text selection via ChatGPT",
   "permissions": ["activeTab", "contextMenus", "storage"],
   "host_permissions": ["https://api.openai.com/*"],
   "background": {
@@ -13,5 +13,8 @@
     "js": ["popup.js"],
     "run_at": "document_end"
   }],
-  "options_page": "options.html"
+  "options_page": "options.html",
+  "icons": {
+    "128": "icon.png"
+  }
 }

@@ -2,7 +2,14 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.action === "displayResult") {
     displayResult(message);
   }
+  else if (message.action === "displayWaitForResult") {
+    displayWaitForResult(message);
+  }
 });
+
+function displayWaitForResult() {
+  
+}
 
 function displayResult(message) {
   const result = message.data;
