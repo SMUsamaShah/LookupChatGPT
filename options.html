@@ -12,12 +12,31 @@
 </style>
 <form id="customMessagesForm">
     <h1>Settings</h1>
-    <label for="authToken">OpenAI API token:</label><br/>
+    <label for="authToken">OpenAI API token:</label>
     <input type="password" id="authToken"><br/>
-    <label for="promptSettings">Default Settings: </label><br/>
-    <textarea id="promptSettings"></textarea><br/>
-    <label for="popupStyle">Default Popup Style: </label><br/>
-    <textarea id="popupStyle"></textarea><br/>
+    <label for="defaultPromptSettings">Default Settings (JSON): </label><br/>
+    <pre id="defaultPromptSettings">
+    {
+        "model": "gpt-3.5-turbo"
+    }
+    </pre>
+    See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a><br/>
+    <br/>
+    <label for="defaultPopupStyle">Default Popup Style (CSS): </label><br/>
+    <pre id="defaultPopupStyle">
+    .lookupchatgpt-popup {
+        color: black;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        padding: 10px;
+        padding-right: 20px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: 999999;
+        font-family: Arial, sans-serif;
+    }
+    </pre>
     <br/>
 
     <h2>Your custom prompts</h2>
@@ -27,8 +46,8 @@
             <th>Enabled</th>
             <th>Title</th>
             <th>System Prompt</th>
-            <th>Prompt Settings</th>
-            <th>Popup Style</th>
+            <th>Prompt Settings (JSON)</th>
+            <th>Popup Style (CSS properties for .lookupchatgpt-popup)</th>
             <th>Action</th>
         </tr>
         </thead>

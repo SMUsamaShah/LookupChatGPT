@@ -24,27 +24,23 @@ document.addEventListener('click', function (event) {
 
 function saveOptions() {
   const token = document.getElementById('authToken').value;
-  const defaultPromptSettings = document.getElementById('promptSettings').value;
-  const defaultPopupStyle = document.getElementById('popupStyle').value;
   
   const newPromptData = [];
   const row = document.querySelectorAll(".inputGroup");
   row.forEach((group) => {
     const enabled = group.querySelector(".enabled").checked;
-    const title = group.querySelector(".title").innerText;
-    const content = group.querySelector(".content").innerText;
-    const popupStyle = group.querySelector(".popupStyle").innerText;
-    const promptSettings = group.querySelector(".promptSettings").innerText;
+    const title = group.querySelector(".title").innerText.trim();
+    const content = group.querySelector(".content").innerText.trim();
+    const popupStyle = group.querySelector(".popupStyle").innerText.trim();
+    const promptSettings = group.querySelector(".promptSettings").innerText.trim();
     newPromptData.push({title, content, enabled, promptSettings, popupStyle});
   });
   
-  chrome.storage.local.set({promptData: newPromptData, token, defaultPromptSettings, defaultPopupStyle});
+  chrome.storage.local.set({promptData: newPromptData, token, });
 }
 
 function loadOptions(options) {
   document.getElementById('authToken').value = options.token;
-  document.getElementById('promptSettings').value = options.defaultPromptSettings || "";
-  document.getElementById('popupStyle').value = options.defaultPopupStyle || "";
   options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
 }
 
