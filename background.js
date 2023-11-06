@@ -22,34 +22,41 @@ function handleLocalStorageChanges(changes, _) {
 
 function handleContextMenuClicked(info, tab) {
   const menuItemIdParts = info.menuItemId.split('-');
-  const messageId = menuItemIdParts[menuItemIdParts.length - 1];
+  const promptId = menuItemIdParts[menuItemIdParts.length - 1];
 
   chrome.storage.local.get(null, function (result) {
+    const tabId = tab.id;
     const selectedText = info.selectionText;
-    const prompt = result.promptData[messageId];
+    const prompt = result.promptData[promptId];
+    
     const token = result.token;
-    const promptSettings = prompt.promptSettings || result.defaultPromptSettings;
-    const popupStyle = prompt.popupStyle || result.defaultPopupStyle;
-    sendRequestToAPI(selectedText, tab.id, prompt.content, token, promptSettings, popupStyle);
+    const promptSettings = prompt.promptSettings;
+    const popupStyle = prompt.popupStyle;
+    const promptTitle = prompt.title;
+    const promptContent = prompt.content;
+    
+    sendRequestToAPI({selectedText, tabId, token, promptId, promptSettings, popupStyle , promptTitle, promptContent,});
   });
 };
 
-function sendRequestToAPI(selectedText, tabId, systemPrompt, token, promptSettings, popupStyle) {
+function sendRequestToAPI(lookup) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [
-      { 'role': 'system', 'content': systemPrompt },
-      { 'role': 'user', 'content': selectedText }
+      { 'role': 'system', 'content': lookup.promptContent },
+      { 'role': 'user', 'content': lookup.selectedText }
     ],
   };
-  const settingsOverride = JSON.parse(promptSettings);
-  for (let key in settingsOverride) {
-    requestData[key] = settingsOverride[key] || requestData[key];
+  if (lookup.promptSettings) {
+    const settingsOverride = JSON.parse(lookup.promptSettings);
+    for (let key in settingsOverride) {
+      requestData[key] = settingsOverride[key] || requestData[key];
+    }
   }
   
   fetch("https://api.openai.com/v1/chat/completions", {
     "headers": {
-      "authorization": `Bearer ${token}`,
+      "authorization": `Bearer ${lookup.token}`,
       "content-type": "application/json",
     },
     "body": JSON.stringify(requestData),
@@ -58,7 +65,11 @@ function sendRequestToAPI(selectedText, tabId, systemPrompt, token, promptSettin
     "credentials": "include"
   })
   .then(response => response.json())
-  .then(resJson => chrome.tabs.sendMessage(tabId, { action: "displayResult", data: resJson.choices[0].message.content, popupStyle, selectedText }))
+  .then(resJson => chrome.tabs.sendMessage(lookup.tabId, {
+    action: "displayResult",
+    lookupResult: resJson.choices[0].message.content,
+    lookup,
+  }))
   .catch(error => console.error(error));
 }
 

@@ -14,15 +14,19 @@
     <h1>Settings</h1>
     <label for="authToken">OpenAI API token:</label>
     <input type="password" id="authToken"><br/>
-    <label for="defaultPromptSettings">Default Settings (JSON): </label><br/>
+    <br/>
+    <details>
+    <summary><label for="defaultPromptSettings">Default Settings (JSON): </label></summary>
     <pre id="defaultPromptSettings">
     {
         "model": "gpt-3.5-turbo"
     }
     </pre>
-    See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a><br/>
+    See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a>
+    </details>
     <br/>
-    <label for="defaultPopupStyle">Default Popup Style (CSS): </label><br/>
+    <details>
+    <summary>Default Popup Style (CSS):</summary>
     <pre id="defaultPopupStyle">
     .lookupchatgpt-popup {
         color: black;
@@ -35,9 +39,11 @@
         border: 1px solid black;
         z-index: 999999;
         font-family: Arial, sans-serif;
+        margin-right: 10px;
     }
     </pre>
-    <br/>
+    </details>
+    
 
     <h2>Your custom prompts</h2>
     <table id="promptTable" border="1" width="100%">

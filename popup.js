@@ -32,6 +32,7 @@ function displayResult(lookup, lookupResult) {
           border: 1px solid black;
           z-index: 999999;
           font-family: Arial, sans-serif;
+          margin-right: 10px;
       }
     `;
     document.head.appendChild(customStyle);
@@ -40,7 +41,8 @@ function displayResult(lookup, lookupResult) {
   const messageContainer = document.createElement("div");
   messageContainer.innerHTML = `
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
-      <b>[${lookup.promptTitle}: ${lookup.selectedText}]</b> ${lookupResult}
+      <b>[${lookup.promptTitle}: ${lookup.selectedText}]</b><br/>
+      ${lookupResult}
       <button style="position: absolute; top: 0; right: 0;">x</button>
     </div>
   `;
