@@ -5,7 +5,6 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   else if (message.action === "displayWaitForResult") {
     displayWaitForResult(message);//todo
   }
-  console.log("message")
 });
 
 function displayWaitForResult() {
@@ -23,9 +22,7 @@ function displayResult(lookup, lookupResult) {
     customStyle.innerHTML = `
       .lookupchatgpt-popup {
           color: black;
-          position: fixed;
-          top: 10px;
-          left: 10px;
+          position: relative;
           padding: 10px;
           padding-right: 20px;
           background-color: white;
@@ -36,27 +33,43 @@ function displayResult(lookup, lookupResult) {
           max-height: 45vh;
           overflow-y: auto;
           max-width: 97.5vw;
+          resize: both;
+          width: fit-content;
       }
     `;
     document.head.appendChild(customStyle);
   }
+
+  let lookupPopupsContainer = document.getElementById("lookupchatgpt-popup-container");
+  if (!lookupPopupsContainer) {
+    lookupPopupsContainer = document.createElement("div");
+    lookupPopupsContainer.setAttribute("id", "lookupchatgpt-popup-container");
+    lookupPopupsContainer.setAttribute("style", "position: absolute; top: 10px; left: 10px; padding: 10px; padding-right: 20px;");
+    document.body.appendChild(lookupPopupsContainer);
+  }
   
-  const messageContainer = document.createElement("div");
-  messageContainer.innerHTML = `
+  const popup = document.createElement("div");
+  popup.innerHTML = `
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
-      <b style="overflow: hidden; text-overflow: ellipsis; width: inherit; white-space: nowrap; display: block;">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
+      <b style="overflow: hidden; text-overflow: ellipsis; width: initial; white-space: nowrap; display: block; padding-right: 30px">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
       ${lookupResult}
-      <button style="position: absolute; top: 0; right: 0;">x</button>
+      <div style="position: absolute; top: 0; right: 0;">
+        <button id="regenerateButton" title="Re-Lookup">r</button>
+        <button id="dismissButton" title="Close">x</button>
+      </div>
     </div>
   `;
-  
-  document.body.appendChild(messageContainer);
+  lookupPopupsContainer.appendChild(popup);
 
-  const dismissButton = messageContainer.getElementsByTagName("button")[0];
+  const dismissButton = popup.querySelector("#dismissButton");
+  const regenerateButton = popup.querySelector("#regenerateButton");
+
   dismissButton.addEventListener("click", function(event){
-    event.target.parentElement.remove();
+    event.target.closest(".lookupchatgpt-popup").parentElement.remove();
   });
 
-  // remove result after 15 seconds
-  //setTimeout(() => messageContainer.remove(), 15000);
+  regenerateButton.addEventListener("click", function(event) {
+    event.target.closest(".lookupchatgpt-popup").parentElement.remove();
+    chrome.runtime.sendMessage({ action: 'relookup', lookup }); 
+  });
 }

@@ -1,6 +1,12 @@
 chrome.storage.local.get(null, createContextMenus);
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 chrome.storage.onChanged.addListener(handleLocalStorageChanges);
+// Listen for regeneration requests from content script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if(request.action === 'relookup') {
+    sendRequestToAPI(request.lookup);
+  }
+});
 
 // Remove all existing contextMenus and add the new ones from local storage
 function createContextMenus(result) {

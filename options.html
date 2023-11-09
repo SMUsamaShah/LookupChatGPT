@@ -30,9 +30,7 @@
     <pre id="defaultPopupStyle">
     .lookupchatgpt-popup {
         color: black;
-        position: fixed;
-        top: 10px;
-        left: 10px;
+        position: relative;
         padding: 10px;
         padding-right: 20px;
         background-color: white;
@@ -40,6 +38,11 @@
         z-index: 999999;
         font-family: Arial, sans-serif;
         margin-right: 10px;
+        max-height: 45vh;
+        overflow-y: auto;
+        max-width: 97.5vw;
+        resize: both;
+        width: fit-content;
     }
     </pre>
     </details>
