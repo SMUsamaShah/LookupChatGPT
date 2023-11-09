@@ -65,11 +65,13 @@ function sendRequestToAPI(lookup) {
     "credentials": "include"
   })
   .then(response => response.json())
-  .then(resJson => chrome.tabs.sendMessage(lookup.tabId, {
-    action: "displayResult",
-    lookupResult: resJson.choices[0].message.content,
-    lookup,
-  }))
+  .then(resJson => {
+    chrome.tabs.sendMessage(lookup.tabId, {
+      action: "displayResult",
+      lookupResult: resJson.choices[0].message.content,
+      lookup,
+    })
+  })
   .catch(error => console.error(error));
 }
 

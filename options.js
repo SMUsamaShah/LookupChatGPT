@@ -13,14 +13,36 @@ addButton.addEventListener('click', function (event) {
   appendNewRowToForm({});
 });
 
-// When the delete button is pressed, remove the relevant message
 document.addEventListener('click', function (event) {
+  // Handle delete prompt button
   if (event.target && event.target.matches(".deleteButton")) {
     event.preventDefault();
     const row = event.target.parentElement.parentElement;
     row.parentNode.removeChild(row);
   }
+  if (event.target && event.target.matches(".moveUpButton")) {
+    event.preventDefault();
+    moveRow(event.target, 'up');
+  }
+  if (event.target && event.target.matches(".moveDownButton")) {
+    event.preventDefault();
+    moveRow(event.target, 'down');
+  }
 });
+
+// Function to move a row up or down
+function moveRow(button, direction) {
+  const row = button.closest('tr');
+  if (!row) return;
+
+  if (direction === 'up') {
+    const previousRow = row.previousElementSibling;
+    if (previousRow) row.parentNode.insertBefore(row, previousRow);
+  } else if (direction === 'down') {
+    const nextRow = row.nextElementSibling;
+    if (nextRow) row.parentNode.insertBefore(nextRow, row);
+  }
+}
 
 function saveOptions() {
   const token = document.getElementById('authToken').value;
@@ -55,7 +77,8 @@ function appendNewRowToForm(message) {
 
   const newRow = `
     <tr class="inputGroup">
-        <td style="width: 5%;"><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
+        <td style="width: 2%;"><button class="moveUpButton">^</button><button class="moveDownButton">v</button></td>
+        <td style="width: 2%;"><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
         <td style="width: 10%;"><div contenteditable="true" class="title">${title}</div></td>
         <td style="width: 30%;"><div contenteditable="true" class="content">${content}</div></td>
         <td style="width: 10%;"><div contenteditable="true" class="promptSettings">${promptSettings}</div></td>

@@ -33,6 +33,9 @@ function displayResult(lookup, lookupResult) {
           z-index: 999999;
           font-family: Arial, sans-serif;
           margin-right: 10px;
+          max-height: 45vh;
+          overflow-y: auto;
+          max-width: 97.5vw;
       }
     `;
     document.head.appendChild(customStyle);
@@ -41,7 +44,7 @@ function displayResult(lookup, lookupResult) {
   const messageContainer = document.createElement("div");
   messageContainer.innerHTML = `
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
-      <b>[${lookup.promptTitle}: ${lookup.selectedText}]</b><br/>
+      <b style="overflow: hidden; text-overflow: ellipsis; width: inherit; white-space: nowrap; display: block;">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
       ${lookupResult}
       <button style="position: absolute; top: 0; right: 0;">x</button>
     </div>
