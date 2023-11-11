@@ -45,7 +45,8 @@ function moveRow(button, direction) {
 }
 
 function saveOptions() {
-  const token = document.getElementById('authToken').value;
+  const token = document.getElementById('authToken').value.trim();
+  const defaultPopupStyle = document.getElementById('defaultPopupStyle').value.trim();
   
   const newPromptData = [];
   const row = document.querySelectorAll(".inputGroup");
@@ -58,11 +59,14 @@ function saveOptions() {
     newPromptData.push({title, content, enabled, promptSettings, popupStyle});
   });
   
-  chrome.storage.local.set({promptData: newPromptData, token, });
+  chrome.storage.local.set({promptData: newPromptData, token, defaultPopupStyle, });
 }
 
 function loadOptions(options) {
   document.getElementById('authToken').value = options.token;
+  if (options.defaultPopupStyle) {
+    document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle;
+  }
   options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
 }
 

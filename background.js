@@ -11,12 +11,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Remove all existing contextMenus and add the new ones from local storage
 function createContextMenus(result) {
   chrome.contextMenus.removeAll(function () {
-    // chrome.storage.local.get(null, function (result) {
       result.promptData.forEach((entry, i) => {
         if (!entry.enabled) return;
         chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: ['selection'], });
       });
-    // });
   });
 }
 
@@ -30,18 +28,20 @@ function handleContextMenuClicked(info, tab) {
   const menuItemIdParts = info.menuItemId.split('-');
   const promptId = menuItemIdParts[menuItemIdParts.length - 1];
 
-  chrome.storage.local.get(null, function (result) {
-    const tabId = tab.id;
-    const selectedText = info.selectionText;
-    const prompt = result.promptData[promptId];
+  chrome.storage.local.get(null, function (options) {
+    const prompt = options.promptData[promptId];
     
-    const token = result.token;
-    const promptSettings = prompt.promptSettings;
-    const popupStyle = prompt.popupStyle;
-    const promptTitle = prompt.title;
-    const promptContent = prompt.content;
-    
-    sendRequestToAPI({selectedText, tabId, token, promptId, promptSettings, popupStyle , promptTitle, promptContent,});
+    sendRequestToAPI({
+      selectedText: info.selectionText, 
+      tabId: tab.id, 
+      token: options.token, 
+      promptId, 
+      promptSettings: prompt.promptSettings,
+      popupStyle: prompt.popupStyle,
+      promptTitle: prompt.title,
+      promptContent: prompt.content, 
+      defaultPopupStyle: options.defaultPopupStyle,
+    });
   });
 };
 

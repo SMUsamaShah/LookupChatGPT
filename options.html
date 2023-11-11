@@ -27,24 +27,45 @@
     <br/>
     <details>
     <summary>Default Popup Style (CSS):</summary>
-    <pre id="defaultPopupStyle">
-    .lookupchatgpt-popup {
-        color: black;
-        position: relative;
-        padding: 10px;
-        padding-right: 20px;
-        background-color: white;
-        border: 1px solid black;
-        z-index: 999999;
-        font-family: Arial, sans-serif;
-        margin-right: 10px;
-        max-height: 45vh;
-        overflow-y: auto;
-        max-width: 97.5vw;
-        resize: both;
-        width: fit-content;
-    }
-    </pre>
+    <textarea id="defaultPopupStyle">
+#lookupchatgpt-popup-container {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+    padding-right: 20px;
+    z-index: 999999;
+    max-width: 60vw;
+}
+.lookupchatgpt-popup {
+    color: black;
+    position: relative;
+    padding: 10px;
+    padding-right: 20px;
+    background-color: white;
+    border: 1px solid black;
+    font-family: Arial, sans-serif;
+    margin-right: 10px;
+    max-height: 45vh;
+    overflow-y: auto;
+    resize: both;
+}
+.lookupchatgpt-popup .button-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+.lookupchatgpt-popup .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: initial;
+    white-space: nowrap;
+    display: block;
+    padding-right: 30px;
+}
+.lookupchatgpt-popup .message {
+}
+    </textarea>
     </details>
     
 
