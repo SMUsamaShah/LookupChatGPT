@@ -30,7 +30,7 @@ function displayResult(lookup, lookupResult) {
     document.body.appendChild(lookupPopupsContainer);
   }
   
-  const popup = document.createElement("div");"".
+  const popup = document.createElement("div");
   popup.innerHTML = `
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
       <b class="title">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
