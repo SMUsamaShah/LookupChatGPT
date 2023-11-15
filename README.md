@@ -11,15 +11,9 @@ From chrome web store https://chrome.google.com/webstore/detail/lookup-selected-
 
 ## Method 2 (for most recent version)
 
-1. Download the this source code and extract into a folder
-2. Open "Manage Extensions" and Turn on "Developer mode"
-3. Click "Load unpacked" button and select that folder
-
-## Method 3
-
-1. Download the .crx from Releases
-2. Open "Manage Extensions" and Turn on "Developer mode"
-3. Drag and drop .crx on manage extensions page
+1. Download the this repo as a zip file
+2. Open `Manage Extensions` and Turn on `Developer mode`
+3. Drag the zip file on that `Manage Extensions` page
 
 
 # Screenshots
