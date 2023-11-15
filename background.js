@@ -11,10 +11,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Remove all existing contextMenus and add the new ones from local storage
 function createContextMenus(result) {
   chrome.contextMenus.removeAll(function () {
-      result.promptData.forEach((entry, i) => {
-        if (!entry.enabled) return;
-        chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: ['selection'], });
-      });
+    if (!result || !result.promptData) return;
+    result.promptData.forEach((entry, i) => {
+      if (!entry.enabled) return;
+      chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: ['selection'], });
+    });
   });
 }
 
@@ -72,9 +73,16 @@ function sendRequestToAPI(lookup) {
   })
   .then(response => response.json())
   .then(resJson => {
+    let msg;
+    if (resJson.error) {
+      msg = resJson.error;
+    }
+    else {
+      msg = resJson.choices[0].message.content;
+    }
     chrome.tabs.sendMessage(lookup.tabId, {
       action: "displayResult",
-      lookupResult: resJson.choices[0].message.content,
+      lookupResult: msg,
       lookup,
     })
   })

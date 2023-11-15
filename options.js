@@ -63,10 +63,12 @@ function saveOptions() {
 }
 
 function loadOptions(options) {
+  if (!options) return;
   document.getElementById('authToken').value = options.token;
   if (options.defaultPopupStyle) {
     document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle;
   }
+  if (!options.promptData) return;
   options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
 }
 
