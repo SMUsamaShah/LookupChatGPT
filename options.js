@@ -52,10 +52,10 @@ function saveOptions() {
   const row = document.querySelectorAll(".inputGroup");
   row.forEach((group) => {
     const enabled = group.querySelector(".enabled").checked;
-    const title = group.querySelector(".title").innerText.trim();
-    const content = group.querySelector(".content").innerText.trim();
-    const popupStyle = group.querySelector(".popupStyle").innerText.trim();
-    const promptSettings = group.querySelector(".promptSettings").innerText.trim();
+    const title = group.querySelector(".title").textContent.trim();
+    const content = group.querySelector(".content").textContent.trim();
+    const popupStyle = group.querySelector(".popupStyle").textContent.trim();
+    const promptSettings = group.querySelector(".promptSettings").textContent.trim();
     newPromptData.push({title, content, enabled, promptSettings, popupStyle});
   });
   
@@ -83,13 +83,13 @@ function appendNewRowToForm(message) {
 
   const newRow = `
     <tr class="inputGroup">
-        <td style="width: 2%;"><button class="moveUpButton">^</button><button class="moveDownButton">v</button></td>
-        <td style="width: 2%;"><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
-        <td style="width: 10%;"><div contenteditable="true" class="title">${title}</div></td>
-        <td style="width: 30%;"><div contenteditable="true" class="content">${content}</div></td>
-        <td style="width: 10%;"><div contenteditable="true" class="promptSettings">${promptSettings}</div></td>
-        <td style="width: 10%;"><div contenteditable="true" class="popupStyle">${popupStyle}</div></td>
-        <td style="width: 5%;"><button class="deleteButton">Delete</button></td>
+        <td><button class="moveUpButton">^</button><button class="moveDownButton">v</button></td>
+        <td><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
+        <td><div contenteditable="true" class="title">${title}</div></td>
+        <td><div contenteditable="true" class="content" style="white-space: pre-wrap;">${content}</div></td>
+        <td><div contenteditable="true" class="promptSettings" style="white-space: pre-wrap;">${promptSettings}</div></td>
+        <td><div contenteditable="true" class="popupStyle" style="white-space: pre-wrap;">${popupStyle}</div></td>
+        <td><button class="deleteButton">Delete</button></td>
     </tr>
     `;
 
