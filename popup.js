@@ -62,7 +62,7 @@ function displayResult(lookup) {
     if (event.key === 'Enter') {
       event.preventDefault();
       lookup.userQuestion = userQuestion.textContent;
-      chrome.runtime.sendMessage({ action: 'lookup-question', lookup });
+      chrome.runtime.sendMessage({ action: 'relookup', lookup });
       popup.remove();
     }
   });

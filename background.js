@@ -6,9 +6,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if(request.action === 'relookup') {
     sendRequestToAPI(request.lookup);
   }
-  else if(request.action === 'lookup-question') {
-    sendRequestToAPI(request.lookup);
-  }
 });
 
 // Remove all existing contextMenus and add the new ones from local storage
