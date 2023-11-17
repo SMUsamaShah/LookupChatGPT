@@ -28,6 +28,17 @@ document.addEventListener('click', function (event) {
     event.preventDefault();
     moveRow(event.target, 'down');
   }
+  if (event.target && event.target.matches("th")) {
+    event.preventDefault();
+    let th = event.target;
+    if (th.getAttribute("oldWidth")) {
+      th.style.width = th.getAttribute("oldWidth");
+      th.removeAttribute("oldWidth");
+      return;
+    }
+    th.setAttribute("oldWidth", event.target.style.width);
+    event.target.style.width = "0.1%";
+  }
 });
 
 // Function to move a row up or down
@@ -75,7 +86,7 @@ function loadOptions(options) {
 function appendNewRowToForm(message) {
   const title = message.title || "";
   const content = message.content || "";
-  const enabled = message.enabled || true;
+  const enabled = message.enabled !== undefined ? message.enabled : true;
   const promptSettings = message.promptSettings || "";
   const popupStyle = message.popupStyle || "";
 

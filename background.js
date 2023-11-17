@@ -6,6 +6,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if(request.action === 'relookup') {
     sendRequestToAPI(request.lookup);
   }
+  else if(request.action === 'lookup-question') {
+    sendRequestToAPI(request.lookup);
+  }
 });
 
 // Remove all existing contextMenus and add the new ones from local storage
@@ -54,6 +57,10 @@ function sendRequestToAPI(lookup) {
       { 'role': 'user', 'content': lookup.selectedText }
     ],
   };
+  if (lookup.lookupResult) {
+    requestData.messages.push({ 'role': 'assistant', 'content': lookup.lookupResult });
+    requestData.messages.push({ 'role': 'user', 'content': lookup.userQuestion });
+  }
   if (lookup.promptSettings) {
     const settingsOverride = JSON.parse(lookup.promptSettings);
     for (let key in settingsOverride) {
@@ -73,16 +80,14 @@ function sendRequestToAPI(lookup) {
   })
   .then(response => response.json())
   .then(resJson => {
-    let msg;
     if (resJson.error) {
-      msg = resJson.error;
+      lookup.lookupResult = resJson.error.message;
     }
     else {
-      msg = resJson.choices[0].message.content;
+      lookup.lookupResult = resJson.choices[0].message.content;
     }
     chrome.tabs.sendMessage(lookup.tabId, {
       action: "displayResult",
-      lookupResult: msg,
       lookup,
     })
   })
