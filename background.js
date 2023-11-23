@@ -54,7 +54,7 @@ function sendRequestToAPI(lookup) {
       { 'role': 'user', 'content': lookup.selectedText }
     ],
   };
-  if (lookup.lookupResult) {
+  if (lookup.userQuestion) {
     requestData.messages.push({ 'role': 'assistant', 'content': lookup.lookupResult });
     requestData.messages.push({ 'role': 'user', 'content': lookup.userQuestion });
   }

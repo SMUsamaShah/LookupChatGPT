@@ -34,10 +34,10 @@ function displayResult(lookup) {
   const popup = document.createElement("div");
   popup.innerHTML = `
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
-      <b class="title">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
-      <div class="message">${lookupResult}</div>
-      <div class="question" id="userQuestion" width="100%" contenteditable style="border-style: solid; border-width: 1px"></div>
-      <div class="button-container">
+      <b class="lookupchatgpt-title">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
+      <div class="lookupchatgpt-message">${lookupResult}</div>
+      <div class="lookupchatgpt-question" id="userQuestion" width="100%" contenteditable style="border-style: solid; border-width: 1px"></div>
+      <div class="lookupchatgpt-button-container">
         <button id="regenerateButton" title="Re-Lookup">r</button>
         <button id="dismissButton" title="Close">x</button>
       </div>
