@@ -11,7 +11,7 @@
         box-sizing: border-box; /* Include padding and border within the specified width */
     }
 </style>
-<form id="customMessagesForm">
+<div id="customMessagesForm">
     <h1>Settings</h1>
     <label for="authToken">OpenAI API token:</label>
     <input type="password" id="authToken"><br/>
@@ -22,6 +22,10 @@
         {
             "model": "gpt-3.5-turbo"
         }
+        </pre>
+        Example settings:
+        <pre>
+        { "model": "gpt-4-1106-preview" }
         </pre>
         See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a>
     </details>
@@ -98,8 +102,8 @@
     </table>
     
     <button id="addNewPrompt">Add prompt</button>
-    <button type="submit">Save</button>
-</form>
+    <button id="savePrompts">Save</button>
+</div>
 <script src="options.js"></script>
 </body>
 </html>

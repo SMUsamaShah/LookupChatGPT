@@ -2,35 +2,13 @@
 chrome.storage.local.get(null, loadOptions);
 let showAdvanced = false;
 
-const form = document.getElementById('customMessagesForm');
-form.addEventListener('submit', function (event) {
-  event.preventDefault();
-  saveOptions();
-});
-
-const addButton = document.getElementById('addNewPrompt');
-addButton.addEventListener('click', function (event) {
-  event.preventDefault();
-  appendNewRowToForm({});
-});
-
 document.addEventListener('click', function (event) {
-  if (event.target.matches(".deleteButton")) {
-    event.preventDefault();
-    const row = event.target.parentElement.parentElement;
-    row.parentNode.removeChild(row);
-  }
-  else if (event.target.matches(".moveUpButton")) {
-    event.preventDefault();
-    moveRow(event.target, 'up');
-  }
-  else if (event.target.matches(".moveDownButton")) {
-    event.preventDefault();
-    moveRow(event.target, 'down');
-  }
-  else if (event.target.matches("#toggleAdvancedColumns")) {
-    toggleAdvancedOptions();
-  }
+  if (event.target.matches(".deleteButton")) { event.target.parentElement.parentElement.remove();}
+  else if (event.target.matches(".moveUpButton")) { moveRow(event.target, 'up'); }
+  else if (event.target.matches(".moveDownButton")) { moveRow(event.target, 'down'); }
+  else if (event.target.matches("#toggleAdvancedColumns")) { toggleAdvancedOptions(); }
+  else if (event.target.matches("#addNewPrompt")) { appendNewRowToForm({}); }
+  else if (event.target.matches("#savePrompts")) { saveOptions(); }
 });
 
 document.addEventListener("DOMContentLoaded", function(event) {
@@ -45,7 +23,6 @@ function toggleAdvancedOptions() {
   }
 }
 
-// Function to move a row up or down
 function moveRow(button, direction) {
   const row = button.closest('tr');
   if (!row) return;
@@ -97,17 +74,13 @@ function appendNewRowToForm(message) {
   const table = document.querySelector('#promptTable tbody');
 
   const context = message.context || "selection";
-  // const defaultUserContentPerContext = {
-  //   "selection": "VAR_SELECTED_TEXT",
-  //   "page": "Webpage title: VAR_PAGE_TITLE\nWebpage URL: Webpage URL: VAR_PAGE_URL",
-  // };
-  const userContent = message.userContent;// || defaultUserContentPerContext[context];
-  const isColVisible = `style=display:${showAdvanced?'table-cell':'none'}`;
+  const userContent = message.userContent;
+  const advancedColumn = `class="advanced" style=display:${showAdvanced?'table-cell':'none'}`;
   const newRow = `
     <tr class="inputGroup">
         <td><button class="moveUpButton">^</button><button class="moveDownButton">v</button></td>
         <td><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
-        <td class="advanced" ${isColVisible}>
+        <td ${advancedColumn}>
           <select class="context">
             <option value="page" ${context === 'page' ? 'selected' : ''}>Page</option>
             <option value="selection" ${context === 'selection' ? 'selected' : ''}>Selection</option>
@@ -115,9 +88,9 @@ function appendNewRowToForm(message) {
         </td>
         <td><div contenteditable="true" class="title">${title}</div></td>
         <td><div contenteditable="true" class="content" style="white-space: pre-wrap;">${content}</div></td>
-        <td class="advanced" ${isColVisible}><div contenteditable="true" class="userContent" style="white-space: pre-wrap;">${userContent}</div></td>
-        <td class="advanced" ${isColVisible}><div contenteditable="true" class="promptSettings" style="white-space: pre-wrap;">${promptSettings}</div></td>
-        <td class="advanced" ${isColVisible}><div contenteditable="true" class="popupStyle" style="white-space: pre-wrap;">${popupStyle}</div></td>
+        <td ${advancedColumn}><div contenteditable="true" class="userContent" style="white-space: pre-wrap;">${userContent}</div></td>
+        <td ${advancedColumn}><div contenteditable="true" class="promptSettings" style="white-space: pre-wrap;">${promptSettings}</div></td>
+        <td ${advancedColumn}><div contenteditable="true" class="popupStyle" style="white-space: pre-wrap;">${popupStyle}</div></td>
         <td><button class="deleteButton">Delete</button></td>
     </tr>
     `;
