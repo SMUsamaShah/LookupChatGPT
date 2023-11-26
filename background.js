@@ -14,7 +14,7 @@ function createContextMenus(result) {
     if (!result || !result.promptData) return;
     result.promptData.forEach((entry, i) => {
       if (!entry.enabled) return;
-      chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: ['selection'], });
+      chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: [entry.context], });
     });
   });
 }
@@ -31,16 +31,32 @@ function handleContextMenuClicked(info, tab) {
 
   chrome.storage.local.get(null, function (options) {
     const prompt = options.promptData[promptId];
+
+    // Replace variables in the prompt content
+    let evaluatedPromptContent = prompt.content;
+    let evaluatedPromptUserContent = prompt.userContent;
+    const variables = {
+      'VAR_SELECTED_TEXT': info.selectionText || "",
+      'VAR_PAGE_TITLE': tab.title || "",
+      'VAR_PAGE_URL': tab.url || "",
+    }
+    for (let _var in variables) {
+      // evaluatedPromptContent = evaluatedPromptContent.replace(new RegExp(_var, 'g'), variables[_var]);
+      // evaluatedPromptUserContent = evaluatedPromptUserContent.replace(new RegExp(_var, 'g'), variables[_var]);
+      evaluatedPromptContent = evaluatedPromptContent.replace(_var, variables[_var]);
+      evaluatedPromptUserContent = evaluatedPromptUserContent.replace(_var, variables[_var]);
+    }
+    prompt.content = evaluatedPromptContent.trim();
+    prompt.userContent = evaluatedPromptUserContent.trim();
     
     sendRequestToAPI({
       selectedText: info.selectionText, 
       tabId: tab.id, 
       token: options.token, 
-      promptId, 
-      promptSettings: prompt.promptSettings,
-      popupStyle: prompt.popupStyle,
-      promptTitle: prompt.title,
-      promptContent: prompt.content, 
+      promptId: promptId,
+      prompt: prompt,
+      //promptContent: evaluatedPromptContent,
+      //promptUserContent: evaluatedPromptUserContent,
       defaultPopupStyle: options.defaultPopupStyle,
     });
   });
@@ -50,16 +66,20 @@ function sendRequestToAPI(lookup) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [
-      { 'role': 'system', 'content': lookup.promptContent },
-      { 'role': 'user', 'content': lookup.selectedText }
+      { 'role': 'system', 'content': lookup.prompt.content },
+      // { 'role': 'user', 'content': lookup.selectedText },
     ],
   };
+  if (lookup.prompt.userContent) {
+    requestData.messages.push({ 'role': 'user', 'content': lookup.prompt.userContent });
+  }
   if (lookup.userQuestion) {
     requestData.messages.push({ 'role': 'assistant', 'content': lookup.lookupResult });
     requestData.messages.push({ 'role': 'user', 'content': lookup.userQuestion });
   }
-  if (lookup.promptSettings) {
-    const settingsOverride = JSON.parse(lookup.promptSettings);
+
+  if (lookup.prompt.promptSettings) {
+    const settingsOverride = JSON.parse(lookup.prompt.promptSettings);
     for (let key in settingsOverride) {
       requestData[key] = settingsOverride[key] || requestData[key];
     }

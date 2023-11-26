@@ -12,9 +12,9 @@ function displayWaitForResult() {
 }
 
 function displayResult(lookup) {
-  const popupStyle = lookup.popupStyle;
-  const selectedText = lookup.selectedText;
-  const promptTitle = lookup.promptTitle;
+  const popupStyle = lookup.prompt.popupStyle;
+  const selectedText = lookup.prompt.userContent;
+  const promptTitle = lookup.prompt.title;
   const lookupResult = lookup.lookupResult;
   
   if (!document.getElementById("lookupchatgpt-popup-style")) {
@@ -33,8 +33,8 @@ function displayResult(lookup) {
   
   const popup = document.createElement("div");
   popup.innerHTML = `
-    <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${lookup.popupStyle}">
-      <b class="lookupchatgpt-title">[${lookup.promptTitle}: ${lookup.selectedText}]</b>
+    <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${popupStyle}">
+      <b class="lookupchatgpt-title">[${promptTitle}: ${selectedText}]</b>
       <div class="lookupchatgpt-message">${lookupResult}</div>
       <div class="lookupchatgpt-question" id="userQuestion" width="100%" contenteditable style="border-style: solid; border-width: 1px"></div>
       <div class="lookupchatgpt-button-container">

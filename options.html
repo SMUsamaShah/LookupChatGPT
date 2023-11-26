@@ -17,18 +17,18 @@
     <input type="password" id="authToken"><br/>
     <br/>
     <details>
-    <summary>Default Settings (JSON): </summary>
-    <pre>
-    {
-        "model": "gpt-3.5-turbo"
-    }
-    </pre>
-    See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a>
+        <summary>Default Settings (JSON): </summary>
+        <pre>
+        {
+            "model": "gpt-3.5-turbo"
+        }
+        </pre>
+        See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a>
     </details>
     <br/>
     <details>
-    <summary>Default Popup Style (CSS):</summary>
-    <textarea id="defaultPopupStyle">
+        <summary>Default Popup Style (CSS):</summary>
+        <textarea id="defaultPopupStyle">
 #lookupchatgpt-popup-container {
     position: fixed;
     top: 10px;
@@ -66,20 +66,29 @@
 }
 .lookupchatgpt-popup .lookupchatgpt-message {
 }
-    </textarea>
+        </textarea>
     </details>
-    
-
+    <br>
+    <p>Following variables can be used in your prompts:<br>
+    <pre>
+    VAR_SELECTED_TEXT
+    VAR_PAGE_TITLE
+    VAR_PAGE_URL
+    </pre>
+    </p>
+    <input type="checkbox" id="toggleAdvancedColumns"><label for="toggleAdvancedColumns">Show Advanced Columns</label>
     <h2>Your custom prompts</h2>
     <table id="promptTable" border="1" width="100%">
         <thead>
         <tr>
             <th style="width: 2%;">Up/Down</th>
             <th style="width: 2%;">Enabled</th>
+            <th class="advanced" style="width: 5%;">Context</th>
             <th style="width: 10%;">Title</th>
             <th style="width: 30%;">System Prompt</th>
-            <th style="width: 10%;">Prompt Settings (JSON)</th>
-            <th style="width: 10%;">Popup Style (CSS properties for .lookupchatgpt-popup)</th>
+            <th class="advanced" style="width: 10%;">User Message</th>
+            <th class="advanced" style="width: 10%;">Prompt Settings (JSON)</th>
+            <th class="advanced" style="width: 10%;">Popup Style (CSS properties for .lookupchatgpt-popup)</th>
             <th style="width: 5%;">Action</th>
         </tr>
         </thead>
