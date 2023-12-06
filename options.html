@@ -10,6 +10,10 @@
         width: 100%; /* Make the input fields fill the width of the cell */
         box-sizing: border-box; /* Include padding and border within the specified width */
     }
+    textarea {
+        width: 300px;
+        height: 70px;
+    }
 </style>
 <div id="customMessagesForm">
     <h1>Settings</h1>
@@ -72,6 +76,12 @@
 }
         </textarea>
     </details>
+    <br>
+    <label for="extButtonPrompt">System Prompt for extension button popup box:</label><br>
+    <textarea id="extButtonPrompt">Read instructions carefully. Its very important. 
+Current page title: VAR_PAGE_TITLE
+Current page URL: VAR_PAGE_URL
+    </textarea>
     <br>
     <p>Following variables can be used in your prompts:<br>
     <pre>

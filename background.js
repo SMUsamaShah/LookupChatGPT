@@ -6,6 +6,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if(request.action === 'relookup') {
     sendRequestToAPI(request.lookup);
   }
+  if (request.action === "ext_button_message") {
+    handleExtButtonMessage(request.userText, request.tab);
+	}
+});
+//runs once on install
+chrome.runtime.onInstalled.addListener(function(details) {
+  if(details.reason == "install") {
+    
+  }
 });
 
 // Remove all existing contextMenus and add the new ones from local storage
@@ -25,29 +34,50 @@ function handleLocalStorageChanges(changes, _) {
   }
 }
 
+function processPrompt(prompt, varData = {selectedText:"", pageTitle:"", pageURL:""}) {
+  // Replace variables in the prompt content
+  let evaluatedPromptContent = prompt.content;
+  let evaluatedPromptUserContent = prompt.userContent;
+  const variables = {
+    'VAR_SELECTED_TEXT': varData.selectedText || "",
+    'VAR_PAGE_TITLE': varData.pageTitle || "",
+    'VAR_PAGE_URL': varData.pageURL || "",
+  }
+  for (let _var in variables) {
+    evaluatedPromptContent = evaluatedPromptContent.replace(_var, variables[_var]);
+    evaluatedPromptUserContent = evaluatedPromptUserContent.replace(_var, variables[_var]);
+  }
+  prompt.content = evaluatedPromptContent.trim();
+  prompt.userContent = evaluatedPromptUserContent.trim();
+}
+
+function handleExtButtonMessage(userText, tab) {
+  chrome.storage.local.get(null, function (options) {
+    const prompt = {
+      content: options.extButtonPrompt || "",
+      userContent: userText,
+      title: "Popup"
+    };
+    processPrompt(prompt, {selectedText: "", pageTitle: tab.title, pageURL: tab.url})
+
+    sendRequestToAPI({
+      selectedText: "",
+      tabId: tab.id,
+      token: options.token,
+      //promptId: promptId,
+      prompt: prompt,
+      defaultPopupStyle: options.defaultPopupStyle,
+    });
+  });
+}
+
 function handleContextMenuClicked(info, tab) {
   const menuItemIdParts = info.menuItemId.split('-');
   const promptId = menuItemIdParts[menuItemIdParts.length - 1];
 
   chrome.storage.local.get(null, function (options) {
     const prompt = options.promptData[promptId];
-
-    // Replace variables in the prompt content
-    let evaluatedPromptContent = prompt.content;
-    let evaluatedPromptUserContent = prompt.userContent;
-    const variables = {
-      'VAR_SELECTED_TEXT': info.selectionText || "",
-      'VAR_PAGE_TITLE': tab.title || "",
-      'VAR_PAGE_URL': tab.url || "",
-    }
-    for (let _var in variables) {
-      // evaluatedPromptContent = evaluatedPromptContent.replace(new RegExp(_var, 'g'), variables[_var]);
-      // evaluatedPromptUserContent = evaluatedPromptUserContent.replace(new RegExp(_var, 'g'), variables[_var]);
-      evaluatedPromptContent = evaluatedPromptContent.replace(_var, variables[_var]);
-      evaluatedPromptUserContent = evaluatedPromptUserContent.replace(_var, variables[_var]);
-    }
-    prompt.content = evaluatedPromptContent.trim();
-    prompt.userContent = evaluatedPromptUserContent.trim();
+    processPrompt(prompt, {selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url})
     
     sendRequestToAPI({
       selectedText: info.selectionText, 
@@ -55,14 +85,12 @@ function handleContextMenuClicked(info, tab) {
       token: options.token, 
       promptId: promptId,
       prompt: prompt,
-      //promptContent: evaluatedPromptContent,
-      //promptUserContent: evaluatedPromptUserContent,
       defaultPopupStyle: options.defaultPopupStyle,
     });
   });
-};
+}
 
-function sendRequestToAPI(lookup) {
+function sendRequestToAPI(lookup = {selectedText:"", }) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [

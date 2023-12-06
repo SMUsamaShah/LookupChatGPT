@@ -2,14 +2,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.action === "displayResult") {
     displayResult(message.lookup);
   }
-  else if (message.action === "displayWaitForResult") {
-    displayWaitForResult(message);//todo
-  }
 });
-
-function displayWaitForResult() {
-  //todo
-}
 
 function displayResult(lookup) {
   const popupStyle = lookup.prompt.popupStyle;

@@ -10,11 +10,17 @@
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["popup.js"],
+    "js": ["popup.js", "button_popup.js"],
     "run_at": "document_end"
   }],
   "options_page": "options.html",
   "icons": {
     "128": "icon.png"
-  }
+  },
+  "action": {
+		"default_popup": "button_popup.html",
+		"default_icon": {
+		 "128": "icon.png"
+		}
+	}
 }

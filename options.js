@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 });
 
 function toggleAdvancedOptions() {
-  showAdvanced = document.getElementById("toggleAdvancedColumns").checked?true:false;
+  showAdvanced = document.getElementById("toggleAdvancedColumns").checked;
   let advancedEls = document.getElementsByClassName('advanced');
   for (let i = 0; i < advancedEls.length; i++) {
       advancedEls[i].style.display = showAdvanced?'table-cell':'none';
@@ -39,6 +39,7 @@ function moveRow(button, direction) {
 function saveOptions() {
   const token = document.getElementById('authToken').value.trim();
   const defaultPopupStyle = document.getElementById('defaultPopupStyle').value.trim();
+  const extButtonPrompt = document.getElementById('extButtonPrompt').value.trim();
   
   const newPromptData = [];
   const row = document.querySelectorAll(".inputGroup");
@@ -53,13 +54,14 @@ function saveOptions() {
     newPromptData.push({context, title, content, userContent, enabled, promptSettings, popupStyle});
   });
   
-  chrome.storage.local.set({promptData: newPromptData, token, defaultPopupStyle, });
+  chrome.storage.local.set({promptData: newPromptData, token, defaultPopupStyle, extButtonPrompt});
 }
 
 function loadOptions(options) {
   if (!options) return;
   document.getElementById('authToken').value = options.token;
-  if (options.defaultPopupStyle) { document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle; }
+  if (options.extButtonPrompt) document.getElementById('extButtonPrompt').value = options.extButtonPrompt;
+  if (options.defaultPopupStyle) document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle;
   if (!options.promptData) return;
   options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
 }
