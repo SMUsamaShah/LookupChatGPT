@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
    toggleAdvancedOptions();
 });
 
+function loadDefault(elementId, defaultValue) {
+  if (!document.getElementById(elementId).value.trim()) {
+    document.getElementById(elementId).value = defaultValue;
+  }
+}
+
 function toggleAdvancedOptions() {
   showAdvanced = document.getElementById("toggleAdvancedColumns").checked;
   let advancedEls = document.getElementsByClassName('advanced');
@@ -64,6 +70,10 @@ function loadOptions(options) {
   if (options.defaultPopupStyle) document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle;
   if (!options.promptData) return;
   options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
+  
+  //load defaults
+  loadDefault("defaultPopupStyle", DEFAULT_POPUP_STYLE);
+  loadDefault("extButtonPrompt", DEFAULT_EXT_BUTTON_PROMPT);
 }
 
 function appendNewRowToForm(message) {

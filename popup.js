@@ -29,7 +29,7 @@ function displayResult(lookup) {
     <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${popupStyle}">
       <b class="lookupchatgpt-title">[${promptTitle}: ${selectedText}]</b>
       <div class="lookupchatgpt-message">${lookupResult}</div>
-      <div class="lookupchatgpt-question" id="userQuestion" width="100%" contenteditable style="border-style: solid; border-width: 1px"></div>
+      <div class="lookupchatgpt-question" id="userQuestion" contenteditable style="border-style: solid; border-width: 1px; width: 100%"></div>
       <div class="lookupchatgpt-button-container">
         <button id="regenerateButton" title="Re-Lookup">r</button>
         <button id="dismissButton" title="Close">x</button>

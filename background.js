@@ -1,19 +1,37 @@
+importScripts("defaults.js");
 chrome.storage.local.get(null, createContextMenus);
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 chrome.storage.onChanged.addListener(handleLocalStorageChanges);
 // Listen for regeneration requests from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if(request.action === 'relookup') {
+  if (request.action === 'relookup') {
     sendRequestToAPI(request.lookup);
   }
   if (request.action === "ext_button_message") {
     handleExtButtonMessage(request.userText, request.tab);
-	}
+  }
 });
+
+// Set default settings
 //runs once on install
-chrome.runtime.onInstalled.addListener(function(details) {
-  if(details.reason == "install") {
-    
+chrome.runtime.onInstalled.addListener(function (details) {
+  if (details.reason === "install") {
+    let newPromptData = [];
+    newPromptData.push({
+      context: "selection",
+      title: DEFAULT_SELECTED_TEXT_PROMPT_TITLE,
+      content: DEFAULT_SELECTED_TEXT_PROMPT_CONTENT,
+      userContent: "VAR_SELECTED_TEXT",
+      enabled: true,
+      promptSettings: "",
+      popupStyle: ""
+    });
+    chrome.storage.local.set({
+      promptData: newPromptData, 
+      token: "",
+      defaultPopupStyle: DEFAULT_POPUP_STYLE,
+      extButtonPrompt: DEFAULT_EXT_BUTTON_PROMPT
+    });
   }
 });
 
@@ -23,7 +41,7 @@ function createContextMenus(result) {
     if (!result || !result.promptData) return;
     result.promptData.forEach((entry, i) => {
       if (!entry.enabled) return;
-      chrome.contextMenus.create({ id: `custom-prompt-${i}`, title: entry.title, contexts: [entry.context], });
+      chrome.contextMenus.create({id: `custom-prompt-${i}`, title: entry.title, contexts: [entry.context],});
     });
   });
 }
@@ -34,7 +52,7 @@ function handleLocalStorageChanges(changes, _) {
   }
 }
 
-function processPrompt(prompt, varData = {selectedText:"", pageTitle:"", pageURL:""}) {
+function processPrompt(prompt, varData = {selectedText: "", pageTitle: "", pageURL: ""}) {
   // Replace variables in the prompt content
   let evaluatedPromptContent = prompt.content;
   let evaluatedPromptUserContent = prompt.userContent;
@@ -78,11 +96,11 @@ function handleContextMenuClicked(info, tab) {
   chrome.storage.local.get(null, function (options) {
     const prompt = options.promptData[promptId];
     processPrompt(prompt, {selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url})
-    
+
     sendRequestToAPI({
-      selectedText: info.selectionText, 
-      tabId: tab.id, 
-      token: options.token, 
+      selectedText: info.selectionText,
+      tabId: tab.id,
+      token: options.token,
       promptId: promptId,
       prompt: prompt,
       defaultPopupStyle: options.defaultPopupStyle,
@@ -90,20 +108,20 @@ function handleContextMenuClicked(info, tab) {
   });
 }
 
-function sendRequestToAPI(lookup = {selectedText:"", }) {
+function sendRequestToAPI(lookup = {selectedText: "",}) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [
-      { 'role': 'system', 'content': lookup.prompt.content },
+      {'role': 'system', 'content': lookup.prompt.content},
       // { 'role': 'user', 'content': lookup.selectedText },
     ],
   };
   if (lookup.prompt.userContent) {
-    requestData.messages.push({ 'role': 'user', 'content': lookup.prompt.userContent });
+    requestData.messages.push({'role': 'user', 'content': lookup.prompt.userContent});
   }
   if (lookup.userQuestion) {
-    requestData.messages.push({ 'role': 'assistant', 'content': lookup.lookupResult });
-    requestData.messages.push({ 'role': 'user', 'content': lookup.userQuestion });
+    requestData.messages.push({'role': 'assistant', 'content': lookup.lookupResult});
+    requestData.messages.push({'role': 'user', 'content': lookup.userQuestion});
   }
 
   if (lookup.prompt.promptSettings) {
@@ -112,7 +130,7 @@ function sendRequestToAPI(lookup = {selectedText:"", }) {
       requestData[key] = settingsOverride[key] || requestData[key];
     }
   }
-  
+
   fetch("https://api.openai.com/v1/chat/completions", {
     "headers": {
       "authorization": `Bearer ${lookup.token}`,
@@ -127,8 +145,7 @@ function sendRequestToAPI(lookup = {selectedText:"", }) {
   .then(resJson => {
     if (resJson.error) {
       lookup.lookupResult = resJson.error.message;
-    }
-    else {
+    } else {
       lookup.lookupResult = resJson.choices[0].message.content;
     }
     chrome.tabs.sendMessage(lookup.tabId, {

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-<script src="popup.js"></script>
 <body>
 <style type="text/css">
     table input[type="text"],
@@ -36,55 +35,9 @@
     <br/>
     <details>
         <summary>Default Popup Style (CSS):</summary>
-        <textarea id="defaultPopupStyle">
-#lookupchatgpt-popup-container {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    padding: 10px;
-    padding-right: 20px;
-    z-index: 999999;
-    max-width: 60vw;
-}
-.lookupchatgpt-popup {
-    color: black;
-    position: relative;
-    padding: 10px;
-    padding-right: 20px;
-    background-color: white;
-    border: 1px solid black;
-    font-family: Arial, sans-serif;
-    margin-right: 10px;
-    max-height: 45vh;
-    overflow-y: auto;
-    resize: both;
-}
-.lookupchatgpt-popup .lookupchatgpt-button-container {
-    position: absolute;
-    top: 0;
-    right: 0;
-}
-.lookupchatgpt-popup .lookupchatgpt-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: initial;
-    white-space: nowrap;
-    display: block;
-    padding-right: 30px;
-}
-.lookupchatgpt-popup .lookupchatgpt-message {
-}
-        </textarea>
+        <textarea id="defaultPopupStyle"></textarea>
     </details>
     <br>
-    <details>
-        <summary>Example prompt:</summary>
-        <code>
-            Read instructions carefully. It's very important.
-            Current page title: VAR_PAGE_TITLE
-            Current page URL: VAR_PAGE_URL
-        </code>
-    </details>
     <label for="extButtonPrompt">System Prompt for extension button popup box:</label><br>
     <textarea id="extButtonPrompt"></textarea>
     <br>
@@ -119,6 +72,7 @@
     <button id="addNewPrompt">Add prompt</button>
     <button id="savePrompts">Save</button>
 </div>
+<script src="defaults.js"></script>
 <script src="options.js"></script>
 </body>
 </html>
