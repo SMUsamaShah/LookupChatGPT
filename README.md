@@ -18,9 +18,9 @@ From chrome web store https://chrome.google.com/webstore/detail/lookup-selected-
 
 
 # Screenshots
-![!context menu](screenshot-context-menu.png)
-![!options](screenshot-options.png)
-![!options](screenshot-popup.png)
+![!context menu](screenshots/screenshot-context-menu.png)
+![!options](screenshots/screenshot-options.png)
+![!options](screenshots/screenshot-popup.png)
 
 
 
