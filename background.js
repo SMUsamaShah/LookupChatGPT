@@ -1,43 +1,39 @@
 importScripts("defaults.js");
-chrome.storage.local.get(null, createContextMenus);
-chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
+chrome.storage.local.get(null).then(createContextMenus);
 chrome.storage.onChanged.addListener(handleLocalStorageChanges);
+chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 // Listen for regeneration requests from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'relookup') {
-    sendRequestToAPI(request.lookup);
-  }
-  if (request.action === "ext_button_message") {
-    handleExtButtonMessage(request.userText, request.tab);
+  switch (request.action) {
+    case 'relookup': sendRequestToAPI(request.lookup); break;
+    case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText); break;
   }
 });
 
 // Set default settings
 //runs once on install
-chrome.runtime.onInstalled.addListener(function (details) {
+chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
-    let newPromptData = [];
-    newPromptData.push({
-      context: "selection",
-      title: DEFAULT_SELECTED_TEXT_PROMPT_TITLE,
-      content: DEFAULT_SELECTED_TEXT_PROMPT_CONTENT,
-      userContent: "VAR_SELECTED_TEXT",
-      enabled: true,
-      promptSettings: "",
-      popupStyle: ""
-    });
-    chrome.storage.local.set({
-      promptData: newPromptData, 
-      token: "",
-      defaultPopupStyle: DEFAULT_POPUP_STYLE,
-      extButtonPrompt: DEFAULT_EXT_BUTTON_PROMPT
-    });
+    const settings = new Options();
+    const prompt = new StoredPrompt();
+    prompt.title = DEFAULT_SELECTED_TEXT_PROMPT_TITLE;
+    prompt.content = DEFAULT_SELECTED_TEXT_PROMPT_CONTENT;
+    prompt.userContent = "VAR_SELECTED_TEXT";
+    
+    settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
+    settings.extButtonPrompt = DEFAULT_EXT_BUTTON_PROMPT;
+    settings.promptData = [prompt]; 
+    chrome.storage.local.set(settings);
   }
 });
 
 // Remove all existing contextMenus and add the new ones from local storage
+/**
+ * 
+ * @param {Options} result
+ */
 function createContextMenus(result) {
-  chrome.contextMenus.removeAll(function () {
+  chrome.contextMenus.removeAll(() => {
     if (!result || !result.promptData) return;
     result.promptData.forEach((entry, i) => {
       if (!entry.enabled) return;
@@ -48,11 +44,11 @@ function createContextMenus(result) {
 
 function handleLocalStorageChanges(changes, _) {
   for (let key in changes) {
-    if (key === 'promptData') chrome.storage.local.get({promptData: []}, createContextMenus);
+    if (key === 'promptData') chrome.storage.local.get(null).then(createContextMenus);
   }
 }
 
-function processPrompt(prompt, varData = {selectedText: "", pageTitle: "", pageURL: ""}) {
+function processPrompt(prompt = new StoredPrompt(), varData = {selectedText: "", pageTitle: "", pageURL: ""}) {
   // Replace variables in the prompt content
   let evaluatedPromptContent = prompt.content;
   let evaluatedPromptUserContent = prompt.userContent;
@@ -69,23 +65,20 @@ function processPrompt(prompt, varData = {selectedText: "", pageTitle: "", pageU
   prompt.userContent = evaluatedPromptUserContent.trim();
 }
 
-function handleExtButtonMessage(userText, tab) {
-  chrome.storage.local.get(null, function (options) {
-    const prompt = {
-      content: options.extButtonPrompt || "",
-      userContent: userText,
-      title: "Popup"
-    };
-    processPrompt(prompt, {selectedText: "", pageTitle: tab.title, pageURL: tab.url})
+function handleExtButtonMessage(userText, tab, selectedText) {
+  chrome.storage.local.get(null).then(/** @param {Options} options */ (options) => {
+    const prompt = new StoredPrompt();
+    prompt.content = options.extButtonPrompt || "";
+    prompt.userContent= userText;
+    prompt.title = "Popup";
+    processPrompt(prompt, {selectedText: selectedText, pageTitle: tab.title, pageURL: tab.url})
 
-    sendRequestToAPI({
-      selectedText: "",
-      tabId: tab.id,
-      token: options.token,
-      //promptId: promptId,
-      prompt: prompt,
-      defaultPopupStyle: options.defaultPopupStyle,
-    });
+    const lookup= new Lookup();
+    lookup.selectedText = selectedText;
+    lookup.tabId = tab.id;
+    lookup.prompt = prompt;
+    lookup.options = options;
+    sendRequestToAPI(lookup);
   });
 }
 
@@ -93,22 +86,21 @@ function handleContextMenuClicked(info, tab) {
   const menuItemIdParts = info.menuItemId.split('-');
   const promptId = menuItemIdParts[menuItemIdParts.length - 1];
 
-  chrome.storage.local.get(null, function (options) {
+  chrome.storage.local.get(null).then(/** @param {Options} options */ (options) => {
     const prompt = options.promptData[promptId];
     processPrompt(prompt, {selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url})
 
-    sendRequestToAPI({
-      selectedText: info.selectionText,
-      tabId: tab.id,
-      token: options.token,
-      promptId: promptId,
-      prompt: prompt,
-      defaultPopupStyle: options.defaultPopupStyle,
-    });
+    const lookup = new Lookup();
+    lookup.selectedText = info.selectionText;
+    lookup.tabId = tab.id;
+    lookup.promptId = promptId;
+    lookup.prompt = prompt;
+    lookup.options = options;
+    sendRequestToAPI(lookup);
   });
 }
 
-function sendRequestToAPI(lookup = {selectedText: "",}) {
+function sendRequestToAPI(lookup = new Lookup()) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
     'messages': [
@@ -133,7 +125,7 @@ function sendRequestToAPI(lookup = {selectedText: "",}) {
 
   fetch("https://api.openai.com/v1/chat/completions", {
     "headers": {
-      "authorization": `Bearer ${lookup.token}`,
+      "authorization": `Bearer ${lookup.options.token}`,
       "content-type": "application/json",
     },
     "body": JSON.stringify(requestData),
@@ -155,4 +147,3 @@ function sendRequestToAPI(lookup = {selectedText: "",}) {
   })
   .catch(error => console.error(error));
 }
-

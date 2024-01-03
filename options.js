@@ -1,5 +1,8 @@
+//helper methods
+$ = (id) => document.getElementById(id);
+
 // Get stored messages or load initial ones
-chrome.storage.local.get(null, loadOptions);
+chrome.storage.local.get(null).then(loadOptions);
 let showAdvanced = false;
 
 document.addEventListener('click', function (event) {
@@ -15,14 +18,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
    toggleAdvancedOptions();
 });
 
-function loadDefault(elementId, defaultValue) {
-  if (!document.getElementById(elementId).value.trim()) {
-    document.getElementById(elementId).value = defaultValue;
-  }
-}
-
 function toggleAdvancedOptions() {
-  showAdvanced = document.getElementById("toggleAdvancedColumns").checked;
+  showAdvanced = $("toggleAdvancedColumns").checked;
   let advancedEls = document.getElementsByClassName('advanced');
   for (let i = 0; i < advancedEls.length; i++) {
       advancedEls[i].style.display = showAdvanced?'table-cell':'none';
@@ -43,37 +40,34 @@ function moveRow(button, direction) {
 }
 
 function saveOptions() {
-  const token = document.getElementById('authToken').value.trim();
-  const defaultPopupStyle = document.getElementById('defaultPopupStyle').value.trim();
-  const extButtonPrompt = document.getElementById('extButtonPrompt').value.trim();
-  
-  const newPromptData = [];
-  const row = document.querySelectorAll(".inputGroup");
-  row.forEach((group) => {
-    const enabled = group.querySelector(".enabled").checked;
-    const title = group.querySelector(".title").textContent.trim();
-    const content = group.querySelector(".content").textContent.trim();
-    const userContent = group.querySelector(".userContent").textContent.trim();
-    const popupStyle = group.querySelector(".popupStyle").textContent.trim();
-    const promptSettings = group.querySelector(".promptSettings").textContent.trim();
-    const context = group.querySelector(".context").value;
-    newPromptData.push({context, title, content, userContent, enabled, promptSettings, popupStyle});
+  const options = new Options();
+  options.token = $('authToken').value.trim();
+  options.defaultPopupStyle = $('defaultPopupStyle').value.trim();
+  options.extButtonPrompt = $('extButtonPrompt').value.trim();
+  // save each row
+  document.querySelectorAll(".inputGroup").forEach((group) => {
+    const p = new StoredPrompt();
+    p.enabled = group.querySelector(".enabled").checked;
+    p.title = group.querySelector(".title").textContent.trim();
+    p.content = group.querySelector(".content").textContent.trim();
+    p.userContent = group.querySelector(".userContent").textContent.trim();
+    p.popupStyle = group.querySelector(".popupStyle").textContent.trim();
+    p.promptSettings = group.querySelector(".promptSettings").textContent.trim();
+    p.context = group.querySelector(".context").value;
+    options.promptData.push(p);
   });
-  
-  chrome.storage.local.set({promptData: newPromptData, token, defaultPopupStyle, extButtonPrompt});
+  chrome.storage.local.set(options);
 }
 
-function loadOptions(options) {
+function loadOptions(options= new Options()) {
   if (!options) return;
-  document.getElementById('authToken').value = options.token;
-  if (options.extButtonPrompt) document.getElementById('extButtonPrompt').value = options.extButtonPrompt;
-  if (options.defaultPopupStyle) document.getElementById('defaultPopupStyle').value = options.defaultPopupStyle;
+  $('authToken').value = options.token;
+  if (options.extButtonPrompt) $('extButtonPrompt').value = options.extButtonPrompt.trim() || DEFAULT_EXT_BUTTON_PROMPT;
+  if (options.defaultPopupStyle) $('defaultPopupStyle').value = options.defaultPopupStyle.trim() || DEFAULT_POPUP_STYLE;
   if (!options.promptData) return;
-  options.promptData.forEach((prompt, i) => { appendNewRowToForm(prompt); });
-  
-  //load defaults
-  loadDefault("defaultPopupStyle", DEFAULT_POPUP_STYLE);
-  loadDefault("extButtonPrompt", DEFAULT_EXT_BUTTON_PROMPT);
+  options.promptData.forEach((prompt, i) => { 
+    appendNewRowToForm(prompt); 
+  });
 }
 
 function appendNewRowToForm(message) {

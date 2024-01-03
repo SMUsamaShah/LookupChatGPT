@@ -38,3 +38,33 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-popup-container {
 const DEFAULT_EXT_BUTTON_PROMPT = "Read instructions carefully. Its very important. \nCurrent page title: VAR_PAGE_TITLE\nCurrent page URL: VAR_PAGE_URL";
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
 const DEFAULT_SELECTED_TEXT_PROMPT_TITLE = "What's this?";
+
+class StoredPrompt {
+  context = "selection";//page
+  title = "";
+  content = "";
+  userContent = ""; //selectedText
+  enabled = true;
+  promptSettings = "";
+  popupStyle = "";
+}
+
+class Options {
+  /**
+   * @type StoredPrompt[]
+   */
+  promptData = [];
+  token = "";
+  defaultPopupStyle = "";
+  extButtonPrompt = "";
+}
+
+class Lookup {
+  selectedText = "";
+  userQuestion = ""; // text entered by the user in popup as a followup question
+  tabId = -1;
+  promptId = "";
+  prompt = new StoredPrompt();
+  options = new Options();
+  lookupResult = "";
+}

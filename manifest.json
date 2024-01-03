@@ -3,7 +3,7 @@
   "name": "Lookup selected text via ChatGPT",
   "version": "1.7",
   "description": "Look up selected text using ChatGPT using your own prompts and show the results on the same page",
-  "permissions": ["activeTab", "contextMenus", "storage"],
+  "permissions": ["activeTab", "contextMenus", "storage", "scripting"],
   "host_permissions": ["https://api.openai.com/*"],
   "background": {
     "service_worker": "background.js"

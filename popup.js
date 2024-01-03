@@ -4,16 +4,18 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   }
 });
 
-function displayResult(lookup) {
+function displayResult(lookup = new Lookup()) {
   const popupStyle = lookup.prompt.popupStyle;
   const selectedText = lookup.prompt.userContent;
   const promptTitle = lookup.prompt.title;
   const lookupResult = lookup.lookupResult;
+  const defaultPopupStyle = lookup.options.defaultPopupStyle;
+  const promptId = lookup.promptId;
   
   if (!document.getElementById("lookupchatgpt-popup-style")) {
     const customStyle = document.createElement("style");
     customStyle.setAttribute("id", "lookupchatgpt-popup-style");
-    customStyle.innerHTML = lookup.defaultPopupStyle;
+    customStyle.innerHTML = defaultPopupStyle;
     document.head.appendChild(customStyle);
   }
 
@@ -26,7 +28,7 @@ function displayResult(lookup) {
   
   const popup = document.createElement("div");
   popup.innerHTML = `
-    <div id="lookupchatgpt-prompt-id-${lookup.promptId}" class="lookupchatgpt-popup" style="${popupStyle}">
+    <div id="lookupchatgpt-prompt-id-${promptId}" class="lookupchatgpt-popup" style="${popupStyle}">
       <b class="lookupchatgpt-title">[${promptTitle}: ${selectedText}]</b>
       <div class="lookupchatgpt-message">${lookupResult}</div>
       <div class="lookupchatgpt-question" id="userQuestion" contenteditable style="border-style: solid; border-width: 1px; width: 100%"></div>
@@ -60,3 +62,4 @@ function displayResult(lookup) {
     }
   });
 }
+
