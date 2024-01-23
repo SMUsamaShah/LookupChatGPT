@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-  document.addEventListener("click", (event) => {
-    if (event.target.matches("#submitButton")) {
-      sendMessage();
-      window.close();
-    }
+  $("submitButton").addEventListener("click", (event) => {
+    sendMessage();
+    window.close();
   });
   document.addEventListener("keypress", (event) => {
     if (event.key === 'Enter') {
@@ -12,6 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
       window.close();
     }
   });
+  chrome.storage.local.get(null).then((/** @param {Options} result */result) => {
+    const promptsDropdown = $("availablePrompts");
+    for (let i = 0; i < result.promptData.length; i++){
+      const prompt = result.promptData[i];
+      if (!prompt.enabled) continue;
+      const option = document.createElement("option");
+      option.text = prompt.title;
+      option.value = i.toString();
+      if (option.value === result.buttonPopupSelectedPrompt) option.selected = true;
+      promptsDropdown.appendChild(option);
+    }
+  });
+  $("availablePrompts").addEventListener("change", (event) => {
+    chrome.storage.local.set({"buttonPopupSelectedPrompt": event.target.value});
+  })
 });
 
 function getSelectedText() {

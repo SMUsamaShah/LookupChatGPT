@@ -1,5 +1,4 @@
-//helper methods
-$ = (id) => document.getElementById(id);
+
 
 // Get stored messages or load initial ones
 chrome.storage.local.get(null).then(loadOptions);
@@ -54,6 +53,7 @@ function saveOptions() {
     p.popupStyle = group.querySelector(".popupStyle").textContent.trim();
     p.promptSettings = group.querySelector(".promptSettings").textContent.trim();
     p.context = group.querySelector(".context").value;
+    p.replaceText = group.querySelector(".replaceText").checked;
     options.promptData.push(p);
   });
   chrome.storage.local.set(options);
@@ -76,6 +76,7 @@ function appendNewRowToForm(message) {
   const enabled = message.enabled !== undefined ? message.enabled : true;
   const promptSettings = message.promptSettings || "";
   const popupStyle = message.popupStyle || "";
+  const replaceText = message.replaceText !== undefined ? message.replaceText : false;
 
   const table = document.querySelector('#promptTable tbody');
 
@@ -90,8 +91,10 @@ function appendNewRowToForm(message) {
           <select class="context">
             <option value="page" ${context === 'page' ? 'selected' : ''}>Page</option>
             <option value="selection" ${context === 'selection' ? 'selected' : ''}>Selection</option>
+<!--            <option value="editable" ${context === 'editable' ? 'selected' : ''}>Editable</option>-->
           </select>
         </td>
+        <td><input type="checkbox" class="replaceText" ${replaceText ? 'checked' : ''} title="Check to replace selected text"></td>
         <td><div contenteditable="true" class="title">${title}</div></td>
         <td><div contenteditable="true" class="content" style="white-space: pre-wrap;">${content}</div></td>
         <td ${advancedColumn}><div contenteditable="true" class="userContent" style="white-space: pre-wrap;">${userContent}</div></td>

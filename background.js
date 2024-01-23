@@ -1,4 +1,5 @@
 importScripts("defaults.js");
+
 chrome.storage.local.get(null).then(createContextMenus);
 chrome.storage.onChanged.addListener(handleLocalStorageChanges);
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
@@ -9,6 +10,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText); break;
   }
 });
+
+const PROMPT_ID_PREFIX = "custom-prompt";
 
 // Set default settings
 //runs once on install
@@ -22,22 +25,19 @@ chrome.runtime.onInstalled.addListener((details) => {
     
     settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
     settings.extButtonPrompt = DEFAULT_EXT_BUTTON_PROMPT;
-    settings.promptData = [prompt]; 
+    settings.promptData.push(prompt); 
     chrome.storage.local.set(settings);
   }
 });
 
 // Remove all existing contextMenus and add the new ones from local storage
-/**
- * 
- * @param {Options} result
- */
+/** @param {Options} result */
 function createContextMenus(result) {
   chrome.contextMenus.removeAll(() => {
     if (!result || !result.promptData) return;
     result.promptData.forEach((entry, i) => {
       if (!entry.enabled) return;
-      chrome.contextMenus.create({id: `custom-prompt-${i}`, title: entry.title, contexts: [entry.context],});
+      chrome.contextMenus.create({id: `${PROMPT_ID_PREFIX}-${i}`, title: entry.title, contexts: [entry.context],});
     });
   });
 }
@@ -105,10 +105,10 @@ function sendRequestToAPI(lookup = new Lookup()) {
     'model': 'gpt-3.5-turbo',
     'messages': [
       {'role': 'system', 'content': lookup.prompt.content},
-      // { 'role': 'user', 'content': lookup.selectedText },
     ],
   };
   if (lookup.prompt.userContent) {
+    // selected text
     requestData.messages.push({'role': 'user', 'content': lookup.prompt.userContent});
   }
   if (lookup.userQuestion) {

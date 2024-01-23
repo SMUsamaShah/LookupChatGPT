@@ -39,14 +39,19 @@ const DEFAULT_EXT_BUTTON_PROMPT = "Read instructions carefully. Its very importa
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
 const DEFAULT_SELECTED_TEXT_PROMPT_TITLE = "What's this?";
 
+//helper methods
+$ = (id) => document.getElementById(id);
+
+// structs
 class StoredPrompt {
   context = "selection";//page
   title = "";
-  content = "";
+  content = ""; // system prompt
   userContent = ""; //selectedText
   enabled = true;
   promptSettings = "";
   popupStyle = "";
+  replaceText = false;
 }
 
 class Options {
@@ -57,6 +62,8 @@ class Options {
   token = "";
   defaultPopupStyle = "";
   extButtonPrompt = "";
+  /** prompt currently in use by button popup */
+  buttonPopupSelectedPrompt = "";
 }
 
 class Lookup {
