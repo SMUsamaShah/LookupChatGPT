@@ -7,7 +7,7 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case 'relookup': sendRequestToAPI(request.lookup); break;
-    case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText); break;
+    case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText, request.promptId); break;
   }
 });
 
@@ -65,12 +65,10 @@ function processPrompt(prompt = new StoredPrompt(), varData = {selectedText: "",
   prompt.userContent = evaluatedPromptUserContent.trim();
 }
 
-function handleExtButtonMessage(userText, tab, selectedText) {
+function handleExtButtonMessage(userText, tab, selectedText, promptId) {
   chrome.storage.local.get(null).then(/** @param {Options} options */ (options) => {
-    const prompt = new StoredPrompt();
-    prompt.content = options.extButtonPrompt || "";
-    prompt.userContent= userText;
-    prompt.title = "Popup";
+    const prompt = options.promptData[promptId];
+    prompt.userContent = userText;
     processPrompt(prompt, {selectedText: selectedText, pageTitle: tab.title, pageURL: tab.url})
 
     const lookup= new Lookup();

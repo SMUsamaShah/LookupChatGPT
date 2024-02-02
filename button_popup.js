@@ -1,13 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   $("submitButton").addEventListener("click", (event) => {
-    sendMessage();
-    window.close();
+    sendMessage(()=> window.close());
   });
   document.addEventListener("keypress", (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      sendMessage();
-      window.close();
+      sendMessage(()=> window.close());
     }
   });
   chrome.storage.local.get(null).then((/** @param {Options} result */result) => {
@@ -31,8 +29,9 @@ function getSelectedText() {
   return window.getSelection().toString();
 }
 
-function sendMessage() {
-  let userText = document.getElementById("myInput").value;
+function sendMessage(onSent) {
+  const userText = $("myInput").value;
+  const promptId = document.getElementById("availablePrompts").value;
   chrome.tabs.query({active: true, lastFocusedWindow: true}, function (tabs) {
     chrome.scripting.executeScript({
       target: {tabId: tabs[0].id}, function: getSelectedText,
@@ -41,8 +40,8 @@ function sendMessage() {
       if (results.length > 0) selectedText = results[0].result;
       // Now that we have the selected text, we can send it to background.js
       chrome.runtime.sendMessage({
-        action: 'ext_button_message', userText: userText, tab: tabs[0], selectedText: selectedText,
-      });
+        action: 'ext_button_message', userText: userText, tab: tabs[0], selectedText: selectedText, promptId: promptId,
+      }, onSent);
     });
   });
 }

@@ -61,7 +61,8 @@ class Options {
   promptData = [];
   token = "";
   defaultPopupStyle = "";
-  extButtonPrompt = "";
+  //deprecated
+  // extButtonPrompt = "";
   /** prompt currently in use by button popup */
   buttonPopupSelectedPrompt = "";
 }
