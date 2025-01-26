@@ -4,6 +4,7 @@
 chrome.storage.local.get(null).then(loadOptions);
 let showAdvanced = false;
 
+
 document.addEventListener('click', function (event) {
   if (event.target.matches(".deleteButton")) { event.target.parentElement.parentElement.remove();}
   else if (event.target.matches(".moveUpButton")) { moveRow(event.target, 'up'); }

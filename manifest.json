@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lookup selected text via ChatGPT",
-  "version": "1.7",
+  "version": "1.72",
   "description": "Look up selected text using ChatGPT using your own prompts and show the results on the same page",
   "permissions": ["activeTab", "contextMenus", "storage", "scripting"],
   "host_permissions": ["https://api.openai.com/*"],

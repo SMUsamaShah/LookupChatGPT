@@ -6,8 +6,9 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 // Listen for regeneration requests from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
-    case 'relookup': sendRequestToAPI(request.lookup); break;
-    case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText, request.promptId); break;
+    case 'relookup': sendRequestToAPI(request.lookup); return true;
+    case "ext_button_message": handleExtButtonMessage(request.userText, request.tab, request.selectedText, request.promptId); return true;
+    default: return false;
   }
 });
 
@@ -68,7 +69,7 @@ function processPrompt(prompt = new StoredPrompt(), varData = {selectedText: "",
 function handleExtButtonMessage(userText, tab, selectedText, promptId) {
   chrome.storage.local.get(null).then(/** @param {Options} options */ (options) => {
     const prompt = options.promptData[promptId];
-    prompt.userContent = userText;
+    prompt.userContent = userText + "\n" + prompt.userContent;
     processPrompt(prompt, {selectedText: selectedText, pageTitle: tab.title, pageURL: tab.url})
 
     const lookup= new Lookup();

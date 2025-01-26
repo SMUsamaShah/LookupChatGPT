@@ -1,22 +1,26 @@
 document.addEventListener('DOMContentLoaded', () => {
   $("submitButton").addEventListener("click", (event) => {
-    sendMessage(()=> window.close());
+    sendMessage();
   });
   document.addEventListener("keypress", (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
-      sendMessage(()=> window.close());
+      sendMessage();
     }
   });
   chrome.storage.local.get(null).then((/** @param {Options} result */result) => {
     const promptsDropdown = $("availablePrompts");
     for (let i = 0; i < result.promptData.length; i++){
       const prompt = result.promptData[i];
-      if (!prompt.enabled) continue;
+      if (!prompt.enabled) {
+        continue;
+      }
       const option = document.createElement("option");
       option.text = prompt.title;
       option.value = i.toString();
-      if (option.value === result.buttonPopupSelectedPrompt) option.selected = true;
+      if (option.value === result.buttonPopupSelectedPrompt) {
+        option.selected = true;
+      }
       promptsDropdown.appendChild(option);
     }
   });
@@ -29,7 +33,11 @@ function getSelectedText() {
   return window.getSelection().toString();
 }
 
-function sendMessage(onSent) {
+function closeThisPopup() {
+  window.close();
+}
+
+function sendMessage() {
   const userText = $("myInput").value;
   const promptId = document.getElementById("availablePrompts").value;
   chrome.tabs.query({active: true, lastFocusedWindow: true}, function (tabs) {
@@ -41,7 +49,8 @@ function sendMessage(onSent) {
       // Now that we have the selected text, we can send it to background.js
       chrome.runtime.sendMessage({
         action: 'ext_button_message', userText: userText, tab: tabs[0], selectedText: selectedText, promptId: promptId,
-      }, onSent);
+      });
+      closeThisPopup();
     });
   });
 }

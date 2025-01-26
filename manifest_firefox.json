@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Lookup selected text via ChatGPT",
+  "version": "1.7",
+  "description": "Look up selected text using ChatGPT using your own prompts and show the results on the same page",
+  "permissions": ["activeTab", "contextMenus", "storage"],
+  "host_permissions": ["https://api.openai.com/*"],
+  "background": {
+    "scripts": "background.js"
+  },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["popup.js", "button_popup.js"],
+    "run_at": "document_end"
+  }],
+  "options_page": "options.html",
+  "icons": {
+    "128": "icon.png"
+  },
+  "action": {
+		"default_popup": "button_popup.html",
+		"default_icon": {
+		 "128": "icon.png"
+		}
+	}
+}
