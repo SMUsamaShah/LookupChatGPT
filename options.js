@@ -1,109 +1,209 @@
+// Options page logic.
+// Loaded after defaults.js and providers.js, so StoredPrompt, Options, and PROVIDERS are available.
 
-
-// Get stored messages or load initial ones
 chrome.storage.local.get(null).then(loadOptions);
+
 let showAdvanced = false;
 
-
-document.addEventListener('click', function (event) {
-  if (event.target.matches(".deleteButton")) { event.target.parentElement.parentElement.remove();}
-  else if (event.target.matches(".moveUpButton")) { moveRow(event.target, 'up'); }
-  else if (event.target.matches(".moveDownButton")) { moveRow(event.target, 'down'); }
-  else if (event.target.matches("#toggleAdvancedColumns")) { toggleAdvancedOptions(); }
-  else if (event.target.matches("#addNewPrompt")) { appendNewRowToForm({}); }
-  else if (event.target.matches("#savePrompts")) { saveOptions(); }
+document.addEventListener("click", (e) => {
+  if      (e.target.matches(".deleteButton"))        e.target.closest("tr").remove();
+  else if (e.target.matches(".moveUpButton"))        moveRow(e.target, "up");
+  else if (e.target.matches(".moveDownButton"))      moveRow(e.target, "down");
+  else if (e.target.matches("#toggleAdvancedColumns")) toggleAdvancedColumns();
+  else if (e.target.matches("#addNewPrompt"))        appendPromptRow(new StoredPrompt());
+  else if (e.target.matches("#savePrompts"))         saveOptions();
 });
 
-document.addEventListener("DOMContentLoaded", function(event) {
-   toggleAdvancedOptions();
-});
+// ── Load ──────────────────────────────────────────────────────────────────────
 
-function toggleAdvancedOptions() {
-  showAdvanced = $("toggleAdvancedColumns").checked;
-  let advancedEls = document.getElementsByClassName('advanced');
-  for (let i = 0; i < advancedEls.length; i++) {
-      advancedEls[i].style.display = showAdvanced?'table-cell':'none';
+function loadOptions(raw) {
+  if (!raw) return;
+  const opts = migrateOptions(raw);
+
+  // Providers
+  for (const key of Object.keys(PROVIDERS)) {
+    const cfg = opts.providers?.[key] || {};
+    const tokenEl = document.getElementById(`${key}-token`);
+    const modelEl = document.getElementById(`${key}-model`);
+    if (tokenEl) tokenEl.value = cfg.token || "";
+    if (modelEl) modelEl.value = cfg.model || "";
   }
+  const defProv = document.getElementById("defaultProvider");
+  if (defProv) defProv.value = opts.defaultProvider || "openai";
+
+  // Appearance
+  $("defaultPopupStyle").value = opts.defaultPopupStyle || DEFAULT_POPUP_STYLE;
+
+  // Behavior — floating selection button
+  const selBtn = opts.selectionButton || {};
+  $("selectionButtonEnabled").checked = selBtn.enabled || false;
+
+  // Prompts — build both the table rows and the floating-button default dropdown
+  if (opts.promptData) {
+    const selBtnSelect = $("selectionButtonPrompt");
+    selBtnSelect.innerHTML = "";
+    opts.promptData.forEach((prompt, i) => {
+      appendPromptRow(migratePrompt(prompt));
+      // Populate the floating-button default dropdown with enabled selection prompts
+      if (prompt.enabled && prompt.context === "selection") {
+        const opt   = document.createElement("option");
+        opt.value   = i;
+        opt.text    = prompt.title;
+        opt.selected = i === (selBtn.defaultPromptId ?? 0);
+        selBtnSelect.appendChild(opt);
+      }
+    });
+  }
+
+  toggleAdvancedColumns(); // apply initial visibility
 }
 
-function moveRow(button, direction) {
-  const row = button.closest('tr');
-  if (!row) return;
+// ── Migration ─────────────────────────────────────────────────────────────────
+// Handle data saved by older versions of the extension.
 
-  if (direction === 'up') {
-    const previousRow = row.previousElementSibling;
-    if (previousRow) row.parentNode.insertBefore(row, previousRow);
-  } else if (direction === 'down') {
-    const nextRow = row.nextElementSibling;
-    if (nextRow) row.parentNode.insertBefore(nextRow, row);
+function migrateOptions(opts) {
+  // Old format had a single top-level `token` (OpenAI only)
+  if (opts.token && !opts.providers?.openai?.token) {
+    opts.providers = opts.providers || {};
+    opts.providers.openai = { token: opts.token, model: "" };
   }
+  opts.defaultProvider = opts.defaultProvider || "openai";
+  opts.providers       = opts.providers       || {};
+  // Ensure every known provider has an entry (new providers added after first install)
+  for (const key of Object.keys(PROVIDERS)) {
+    opts.providers[key] = opts.providers[key] || { token: "", model: "" };
+  }
+  opts.selectionButton = opts.selectionButton || { enabled: false, defaultPromptId: 0 };
+  return opts;
 }
+
+function migratePrompt(prompt) {
+  // Old format used a boolean `replaceText`; map it to the string outputMode
+  if (prompt.replaceText === true && !prompt.outputMode) prompt.outputMode = "replace";
+  // Old format used `promptSettings` for raw API JSON; rename to extraParams
+  if (prompt.promptSettings && !prompt.extraParams) prompt.extraParams = prompt.promptSettings;
+  prompt.outputMode     = prompt.outputMode     || "popup";
+  prompt.followUpRounds = prompt.followUpRounds ?? 1;
+  return prompt;
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
 
 function saveOptions() {
-  const options = new Options();
-  options.token = $('authToken').value.trim();
-  options.defaultPopupStyle = $('defaultPopupStyle').value.trim();
-  options.extButtonPrompt = $('extButtonPrompt').value.trim();
-  // save each row
-  document.querySelectorAll(".inputGroup").forEach((group) => {
-    const p = new StoredPrompt();
-    p.enabled = group.querySelector(".enabled").checked;
-    p.title = group.querySelector(".title").textContent.trim();
-    p.content = group.querySelector(".content").textContent.trim();
-    p.userContent = group.querySelector(".userContent").textContent.trim();
-    p.popupStyle = group.querySelector(".popupStyle").textContent.trim();
-    p.promptSettings = group.querySelector(".promptSettings").textContent.trim();
-    p.context = group.querySelector(".context").value;
-    p.replaceText = group.querySelector(".replaceText").checked;
-    options.promptData.push(p);
+  const opts = new Options();
+
+  // Providers
+  for (const key of Object.keys(PROVIDERS)) {
+    opts.providers[key] = {
+      token: (document.getElementById(`${key}-token`)?.value || "").trim(),
+      model: (document.getElementById(`${key}-model`)?.value || "").trim(),
+    };
+  }
+  opts.defaultProvider = $("defaultProvider").value;
+
+  // Appearance
+  opts.defaultPopupStyle = $("defaultPopupStyle").value.trim();
+
+  // Behavior
+  opts.selectionButton = {
+    enabled:         $("selectionButtonEnabled").checked,
+    defaultPromptId: parseInt($("selectionButtonPrompt").value) || 0,
+  };
+
+  // Prompts
+  document.querySelectorAll("#promptTable tbody .promptRow").forEach((row) => {
+    const p           = new StoredPrompt();
+    p.enabled         = row.querySelector(".enabled").checked;
+    p.context         = row.querySelector(".context").value;
+    p.outputMode      = row.querySelector(".outputMode").value;
+    p.followUpRounds  = parseInt(row.querySelector(".followUpRounds").value) || 0;
+    p.title           = row.querySelector(".title").textContent.trim();
+    p.content         = row.querySelector(".content").textContent.trim();
+    p.userContent     = row.querySelector(".userContent").textContent.trim();
+    p.providerOverride = row.querySelector(".providerOverride").value;
+    p.modelOverride   = row.querySelector(".modelOverride").value.trim();
+    p.extraParams     = row.querySelector(".extraParams").textContent.trim();
+    p.popupStyle      = row.querySelector(".popupStyle").textContent.trim();
+    opts.promptData.push(p);
   });
-  chrome.storage.local.set(options);
+
+  chrome.storage.local.set(opts).then(() => {
+    // Briefly flash the save button to confirm
+    const btn = $("savePrompts");
+    btn.textContent = "Saved ✓";
+    setTimeout(() => { btn.textContent = "Save"; }, 1200);
+  });
 }
 
-function loadOptions(options= new Options()) {
-  if (!options) return;
-  $('authToken').value = options.token;
-  if (options.extButtonPrompt) $('extButtonPrompt').value = options.extButtonPrompt.trim() || DEFAULT_EXT_BUTTON_PROMPT;
-  if (options.defaultPopupStyle) $('defaultPopupStyle').value = options.defaultPopupStyle.trim() || DEFAULT_POPUP_STYLE;
-  if (!options.promptData) return;
-  options.promptData.forEach((prompt, i) => { 
-    appendNewRowToForm(prompt); 
+// ── Table helpers ─────────────────────────────────────────────────────────────
+
+function moveRow(button, direction) {
+  const row = button.closest("tr");
+  if (!row) return;
+  if (direction === "up" && row.previousElementSibling) {
+    row.parentNode.insertBefore(row, row.previousElementSibling);
+  } else if (direction === "down" && row.nextElementSibling) {
+    row.parentNode.insertBefore(row.nextElementSibling, row);
+  }
+}
+
+function toggleAdvancedColumns() {
+  showAdvanced = $("toggleAdvancedColumns").checked;
+  document.querySelectorAll(".advanced").forEach((el) => {
+    el.style.display = showAdvanced ? "" : "none";
   });
 }
 
-function appendNewRowToForm(message) {
-  const title = message.title || "";
-  const content = message.content || "";
-  const enabled = message.enabled !== undefined ? message.enabled : true;
-  const promptSettings = message.promptSettings || "";
-  const popupStyle = message.popupStyle || "";
-  const replaceText = message.replaceText !== undefined ? message.replaceText : false;
+// Builds the provider <select> options from PROVIDERS so the table
+// stays in sync automatically when new providers are added to providers.js
+function providerSelectHTML(selected) {
+  const blank = `<option value="">— global default —</option>`;
+  const rest  = Object.entries(PROVIDERS)
+    .map(([key, p]) => `<option value="${key}" ${selected === key ? "selected" : ""}>${p.label}</option>`)
+    .join("");
+  return blank + rest;
+}
 
-  const table = document.querySelector('#promptTable tbody');
-
-  const context = message.context || "selection";
-  const userContent = message.userContent;
-  const advancedColumn = `class="advanced" style=display:${showAdvanced?'table-cell':'none'}`;
-  const newRow = `
-    <tr class="inputGroup">
-        <td><button class="moveUpButton">^</button><button class="moveDownButton">v</button></td>
-        <td><input type="checkbox" class="enabled" ${enabled ? 'checked' : ''} title="Check to enable"></td>
-        <td ${advancedColumn}>
-          <select class="context">
-            <option value="page" ${context === 'page' ? 'selected' : ''}>Page</option>
-            <option value="selection" ${context === 'selection' ? 'selected' : ''}>Selection</option>
-<!--            <option value="editable" ${context === 'editable' ? 'selected' : ''}>Editable</option>-->
-          </select>
-        </td>
-        <td><input type="checkbox" class="replaceText" ${replaceText ? 'checked' : ''} title="Check to replace selected text"></td>
-        <td><div contenteditable="true" class="title">${title}</div></td>
-        <td><div contenteditable="true" class="content" style="white-space: pre-wrap;">${content}</div></td>
-        <td ${advancedColumn}><div contenteditable="true" class="userContent" style="white-space: pre-wrap;">${userContent}</div></td>
-        <td ${advancedColumn}><div contenteditable="true" class="promptSettings" style="white-space: pre-wrap;">${promptSettings}</div></td>
-        <td ${advancedColumn}><div contenteditable="true" class="popupStyle" style="white-space: pre-wrap;">${popupStyle}</div></td>
-        <td><button class="deleteButton">Delete</button></td>
-    </tr>
-    `;
-
-  table.insertAdjacentHTML('beforeend', newRow);
+function appendPromptRow(prompt) {
+  const adv  = `class="advanced" style="display:${showAdvanced ? "" : "none"}"`;
+  const row  = document.createElement("tr");
+  row.className = "promptRow";
+  row.innerHTML = `
+    <td>
+      <button class="moveUpButton"   title="Move up">↑</button>
+      <button class="moveDownButton" title="Move down">↓</button>
+    </td>
+    <td style="text-align:center">
+      <input type="checkbox" class="enabled" ${prompt.enabled ? "checked" : ""} title="Enable this prompt">
+    </td>
+    <td>
+      <select class="outputMode">
+        <option value="popup"   ${prompt.outputMode !== "replace" ? "selected" : ""}>Show popup</option>
+        <option value="replace" ${prompt.outputMode === "replace" ? "selected" : ""}>Replace selection</option>
+      </select>
+    </td>
+    <td style="text-align:center">
+      <input type="number" class="followUpRounds" value="${prompt.followUpRounds ?? 1}"
+             min="0" max="20" title="0 = hide follow-up box | 1 = last exchange only (default) | N = last N exchanges">
+    </td>
+    <td><div contenteditable class="title">${prompt.title}</div></td>
+    <td><div contenteditable class="content">${prompt.content}</div></td>
+    <td ${adv}>
+      <select class="context">
+        <option value="selection" ${prompt.context !== "page" ? "selected" : ""}>Selection</option>
+        <option value="page"      ${prompt.context === "page" ? "selected" : ""}>Page</option>
+      </select>
+    </td>
+    <td ${adv}><div contenteditable class="userContent">${prompt.userContent || ""}</div></td>
+    <td ${adv}>
+      <select class="providerOverride">
+        ${providerSelectHTML(prompt.providerOverride || "")}
+      </select>
+    </td>
+    <td ${adv}><input type="text" class="modelOverride" value="${prompt.modelOverride || ""}" placeholder="(provider default)"></td>
+    <td ${adv}><div contenteditable class="extraParams">${prompt.extraParams || ""}</div></td>
+    <td ${adv}><div contenteditable class="popupStyle">${prompt.popupStyle || ""}</div></td>
+    <td><button class="deleteButton">✕</button></td>
+  `;
+  document.querySelector("#promptTable tbody").appendChild(row);
 }
