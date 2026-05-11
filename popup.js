@@ -15,21 +15,41 @@ chrome.runtime.onMessage.addListener((message) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-let _cachedOptions   = null; // invalidated whenever storage changes
-let _loadingOptions  = false; // prevents duplicate in-flight storage reads
+let _cachedOptions        = null;  // invalidated whenever storage changes
+let _loadingOptions       = false; // prevents duplicate in-flight storage reads
+let _selectionAtMouseDown = "";    // selection text snapshotted at mousedown; see onSelectionMouseUp
 
 function initFloatingButton() {
-  document.addEventListener("mouseup",  onSelectionMouseUp);
-  // Hide whenever the selection is cleared — selectionchange is the reliable signal
-  // for this. A mousedown handler won't work because clicking certain elements
-  // (buttons, selects, inputs) doesn't clear the selection, so mouseup still sees
-  // the old text and immediately re-shows the button.
+  // Inject hover/active styles for the floating button once per page.
+  // Inline styles can't express :hover/:active, so a <style> tag is the only option.
+  if (!document.getElementById("lcgpt-float-style")) {
+    const s = document.createElement("style");
+    s.id = "lcgpt-float-style";
+    s.textContent = `
+      #lcgpt-float-btn button:hover  { background: #f0f0f0 !important; }
+      #lcgpt-float-btn button:active { background: #ddd    !important; }
+      .lcgpt-menu-item:hover         { background: #f0f0f0 !important; }
+    `;
+    document.head.appendChild(s);
+  }
+
+  document.addEventListener("mousedown", (e) => {
+    if (e.target.closest("#lcgpt-float-btn")) return;
+    // Snapshot the selection NOW so mouseup can tell whether the user made a
+    // genuinely new selection or just clicked something that left the old one intact.
+    _selectionAtMouseDown = window.getSelection()?.toString().trim() || "";
+    hideFloatingButton();
+  });
+
+  document.addEventListener("mouseup", onSelectionMouseUp);
+
+  // Belt-and-suspenders: also hide on selectionchange → covers keyboard deselection
+  // (e.g. pressing Escape or Ctrl+A then typing) where no mousedown/up fires.
   document.addEventListener("selectionchange", () => {
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
-  // Hide when the page scrolls so the button doesn't drift away from the selection
+
   document.addEventListener("scroll", hideFloatingButton, { passive: true });
-  // Invalidate options cache whenever the user changes settings
   chrome.storage.onChanged.addListener(() => { _cachedOptions = null; });
 }
 
@@ -40,11 +60,15 @@ function onSelectionMouseUp(e) {
   const text = sel?.toString().trim();
   if (!text) { hideFloatingButton(); return; }
 
+  // If the selection text is unchanged from mousedown, the user clicked something
+  // that kept the old selection alive (a button, input, etc.) rather than making
+  // a new one. mousedown already hid the button, so don't re-show it.
+  if (text === _selectionAtMouseDown) return;
+
   if (_cachedOptions !== null) {
     maybeShowFloatingButton(sel, _cachedOptions);
     return;
   }
-  // Only start one storage read at a time; if one is already in flight, skip
   if (_loadingOptions) return;
   _loadingOptions = true;
   chrome.storage.local.get(null).then((opts) => {
@@ -100,12 +124,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   };
 
   menu.innerHTML = prompts.map((p) =>
-    `<div data-id="${p.id}" style="padding:5px 10px;cursor:pointer">${p.title}</div>`
+    `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer">${p.title}</div>`
   ).join("");
   menu.querySelectorAll("[data-id]").forEach((item) => {
-    item.onmouseover = () => { item.style.background = "#f0f0f0"; };
-    item.onmouseout  = () => { item.style.background = ""; };
-    item.onclick     = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
+    item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
   });
 
   // Position the button just above the selection rectangle (viewport coordinates)
