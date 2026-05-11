@@ -45,12 +45,13 @@ function sendMessage() {
       target: {tabId: tabs[0].id}, function: getSelectedText,
     }, (results) => {
       let selectedText = "";
-      if (results.length > 0) selectedText = results[0].result;
-      // Now that we have the selected text, we can send it to background.js
+      if (results && results.length > 0) selectedText = results[0].result;
+      // Close only after message is confirmed delivered to avoid MV3 context teardown dropping the message
       chrome.runtime.sendMessage({
         action: 'ext_button_message', userText: userText, tab: tabs[0], selectedText: selectedText, promptId: promptId,
+      }, () => {
+        closeThisPopup();
       });
-      closeThisPopup();
     });
   });
 }

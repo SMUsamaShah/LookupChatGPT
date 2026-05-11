@@ -99,6 +99,16 @@ function handleContextMenuClicked(info, tab) {
   });
 }
 
+function sendMessageToTab(tabId, message, retries = 5, delay = 200) {
+  chrome.tabs.sendMessage(tabId, message).catch(err => {
+    if (retries > 0) {
+      setTimeout(() => sendMessageToTab(tabId, message, retries - 1, delay * 1.5), delay);
+    } else {
+      console.error("Could not deliver message to tab after retries:", err);
+    }
+  });
+}
+
 function sendRequestToAPI(lookup = new Lookup()) {
   const requestData = {
     'model': 'gpt-3.5-turbo',
@@ -139,10 +149,7 @@ function sendRequestToAPI(lookup = new Lookup()) {
     } else {
       lookup.lookupResult = resJson.choices[0].message.content;
     }
-    chrome.tabs.sendMessage(lookup.tabId, {
-      action: "displayResult",
-      lookup,
-    })
+    sendMessageToTab(lookup.tabId, {action: "displayResult", lookup});
   })
   .catch(error => console.error(error));
 }
