@@ -170,8 +170,8 @@ function appendPromptRow(prompt) {
   row.className = "promptRow";
   row.innerHTML = `
     <td>
-      <button class="moveUpButton"   title="Move up">↑</button>
-      <button class="moveDownButton" title="Move down">↓</button>
+      <button class="moveUpButton"   title="Move up">^</button>
+      <button class="moveDownButton" title="Move down">v</button>
     </td>
     <td style="text-align:center">
       <input type="checkbox" class="enabled" ${prompt.enabled ? "checked" : ""} title="Enable this prompt">
@@ -203,7 +203,7 @@ function appendPromptRow(prompt) {
     <td ${adv}><input type="text" class="modelOverride" value="${prompt.modelOverride || ""}" placeholder="(provider default)"></td>
     <td ${adv}><div contenteditable class="extraParams">${prompt.extraParams || ""}</div></td>
     <td ${adv}><div contenteditable class="popupStyle">${prompt.popupStyle || ""}</div></td>
-    <td><button class="deleteButton">✕</button></td>
+    <td><button class="deleteButton">x</button></td>
   `;
   document.querySelector("#promptTable tbody").appendChild(row);
 }
