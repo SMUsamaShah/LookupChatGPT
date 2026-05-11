@@ -20,9 +20,12 @@ let _loadingOptions  = false; // prevents duplicate in-flight storage reads
 
 function initFloatingButton() {
   document.addEventListener("mouseup",  onSelectionMouseUp);
-  // Hide on any outside click (but not clicks inside our own button or popup)
-  document.addEventListener("mousedown", (e) => {
-    if (!e.target.closest("#lcgpt-float-btn")) hideFloatingButton();
+  // Hide whenever the selection is cleared — selectionchange is the reliable signal
+  // for this. A mousedown handler won't work because clicking certain elements
+  // (buttons, selects, inputs) doesn't clear the selection, so mouseup still sees
+  // the old text and immediately re-shows the button.
+  document.addEventListener("selectionchange", () => {
+    if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
   // Hide when the page scrolls so the button doesn't drift away from the selection
   document.addEventListener("scroll", hideFloatingButton, { passive: true });
