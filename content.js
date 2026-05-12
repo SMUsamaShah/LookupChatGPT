@@ -17,6 +17,9 @@ chrome.runtime.onMessage.addListener((message) => {
 
 let _cachedOptions  = null;  // invalidated whenever storage changes
 let _loadingOptions = false; // prevents duplicate in-flight storage reads
+let _mouseDownPos   = null;  // set on mousedown, used by mouseup to detect drag vs click
+let _mouseDownMulti = false; // true when mousedown was a double/triple-click
+let _buttonPagePos  = null;  // page-coordinate anchor for the floating button
 
 function initFloatingButton() {
   // Inject hover/active styles for the floating button once per page.
@@ -35,6 +38,8 @@ function initFloatingButton() {
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) return;
     hideFloatingButton();
+    _mouseDownPos   = { x: e.clientX, y: e.clientY };
+    _mouseDownMulti = e.detail >= 2; // double- or triple-click
   });
 
   document.addEventListener("mouseup", onSelectionMouseUp);
@@ -45,7 +50,7 @@ function initFloatingButton() {
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
 
-  document.addEventListener("scroll", hideFloatingButton, { passive: true });
+  document.addEventListener("scroll", updateFloatingButtonPosition, { passive: true });
   chrome.storage.onChanged.addListener(() => { _cachedOptions = null; });
 }
 
@@ -56,6 +61,16 @@ function onSelectionMouseUp(e) {
   const sel  = window.getSelection();
   const text = sel?.toString().trim();
   if (!text) { hideFloatingButton(); return; }
+
+  // A plain single click (no drag, not a double/triple-click) should not show the
+  // button. When clicking on already-selected text, Chrome keeps the selection alive
+  // through mouseup and only collapses it afterward via selectionchange, so we'd
+  // otherwise re-show the button on every click on selected text.
+  const dragged = _mouseDownPos && (
+    Math.abs(e.clientX - _mouseDownPos.x) > 3 ||
+    Math.abs(e.clientY - _mouseDownPos.y) > 3
+  );
+  if (!dragged && !_mouseDownMulti) return;
 
   if (_cachedOptions !== null) {
     maybeShowFloatingButton(sel, _cachedOptions);
@@ -122,16 +137,33 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
   });
 
-  // Position the button just above the selection rectangle (viewport coordinates)
+  // Store the page-coordinate anchor (above the selection) so the button can
+  // follow the text when the page is scrolled.
   const rect = sel.getRangeAt(0).getBoundingClientRect();
-  btn.style.left    = `${Math.round(rect.left)}px`;
-  btn.style.top     = `${Math.max(4, Math.round(rect.top) - 36)}px`;
-  btn.hidden        = false;
+  _buttonPagePos = {
+    x: Math.round(rect.left + window.scrollX),
+    y: Math.round(rect.top  + window.scrollY) - 36,
+  };
+  btn.hidden = false;
+  updateFloatingButtonPosition();
+}
+
+function updateFloatingButtonPosition() {
+  if (!_buttonPagePos) return;
+  const btn = document.getElementById("lcgpt-float-btn");
+  if (!btn || btn.hidden) return;
+  const x = _buttonPagePos.x - window.scrollX;
+  const y = _buttonPagePos.y - window.scrollY;
+  // Hide once the anchor has scrolled well out of view
+  if (y < -50 || y > window.innerHeight + 50) { hideFloatingButton(); return; }
+  btn.style.left = `${x}px`;
+  btn.style.top  = `${Math.max(4, y)}px`;
 }
 
 function hideFloatingButton() {
   const btn = document.getElementById("lcgpt-float-btn");
   if (btn) btn.hidden = true;
+  _buttonPagePos = null;
 }
 
 function runFloatingPrompt(promptId) {
