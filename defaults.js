@@ -1,6 +1,6 @@
 // ── Visual defaults ───────────────────────────────────────────────────────────
 
-const DEFAULT_POPUP_STYLE = `#lookupchatgpt-result-dialog-container {
+const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   position: fixed;
   top: 10px;
   left: 10px;
@@ -9,7 +9,7 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-result-dialog-container {
   z-index: 999999;
   max-width: 60vw;
 }
-.lookupchatgpt-result-dialog {
+.lcgpt-result-panel {
   color: black;
   position: relative;
   padding: 10px;
@@ -22,12 +22,12 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-result-dialog-container {
   overflow-y: auto;
   resize: both;
 }
-.lookupchatgpt-result-dialog .lookupchatgpt-button-container {
+.lcgpt-result-panel .lcgpt-button-container {
   position: absolute;
   top: 0;
   right: 0;
 }
-.lookupchatgpt-result-dialog .lookupchatgpt-title {
+.lcgpt-result-panel .lcgpt-title {
   overflow: hidden;
   text-overflow: ellipsis;
   width: initial;
@@ -35,7 +35,7 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-result-dialog-container {
   display: block;
   padding-right: 30px;
 }
-.lookupchatgpt-result-dialog .lookupchatgpt-message {
+.lcgpt-result-panel .lcgpt-message {
 }`;
 
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";

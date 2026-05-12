@@ -54,7 +54,7 @@ function initFloatingButton() {
 }
 
 function onSelectionMouseUp(e) {
-  if (e.target.closest("#lcgpt-float-btn, #lookupchatgpt-result-container")) return;
+  if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
 
   const sel  = window.getSelection();
   const text = sel?.toString().trim();
@@ -162,18 +162,18 @@ function displayResult(lookup) {
     return;
   }
 
-  // Inject shared result dialog CSS once per page
-  if (!document.getElementById("lookupchatgpt-result-style")) {
+  // Inject shared result panel CSS once per page
+  if (!document.getElementById("lcgpt-result-style")) {
     const style  = document.createElement("style");
-    style.id     = "lookupchatgpt-result-style";
+    style.id     = "lcgpt-result-style";
     style.innerHTML = lookup.options.defaultPopupStyle;
     document.head.appendChild(style);
   }
 
-  let container = document.getElementById("lookupchatgpt-result-container");
+  let container = document.getElementById("lcgpt-result-container");
   if (!container) {
     container    = document.createElement("div");
-    container.id = "lookupchatgpt-result-container";
+    container.id = "lcgpt-result-container";
     document.body.appendChild(container);
   }
 
@@ -182,15 +182,15 @@ function displayResult(lookup) {
 
   const dialog = document.createElement("div");
   dialog.innerHTML = `
-    <div class="lookupchatgpt-result-dialog" style="${lookup.prompt.popupStyle}">
-      <b class="lookupchatgpt-title">[${lookup.prompt.title}: ${lookup.prompt.userContent}]</b>
-      <div class="lookupchatgpt-message">${lookup.lookupResult}</div>
+    <div class="lcgpt-result-panel" style="${lookup.prompt.popupStyle}">
+      <b class="lcgpt-title">[${lookup.prompt.title}: ${lookup.prompt.userContent}]</b>
+      <div class="lcgpt-message">${lookup.lookupResult}</div>
       ${showFollowUp
-        ? `<div class="lookupchatgpt-question" contenteditable
+        ? `<div class="lcgpt-question" contenteditable
                style="border:1px solid #ccc;width:100%;min-height:1.4em;margin-top:4px;padding:2px"
                placeholder="Ask a follow-up…"></div>`
         : ""}
-      <div class="lookupchatgpt-button-container">
+      <div class="lcgpt-button-container">
         <button class="lcgpt-btn-regen"    title="Re-run original prompt">r</button>
         <button class="lcgpt-btn-dismiss"  title="Close">x</button>
       </div>
@@ -211,7 +211,7 @@ function displayResult(lookup) {
 
   if (!showFollowUp) return;
 
-  const questionInput = dialog.querySelector(".lookupchatgpt-question");
+  const questionInput = dialog.querySelector(".lcgpt-question");
   questionInput.addEventListener("keypress", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
