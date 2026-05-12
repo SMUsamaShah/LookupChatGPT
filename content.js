@@ -17,8 +17,6 @@ chrome.runtime.onMessage.addListener((message) => {
 
 let _cachedOptions  = null;  // invalidated whenever storage changes
 let _loadingOptions = false; // prevents duplicate in-flight storage reads
-let _mouseDownPos   = null;  // set on mousedown, used by mouseup to detect drag vs click
-let _mouseDownMulti = false; // true when mousedown was a double/triple-click
 let _buttonPagePos  = null;  // page-coordinate anchor for the floating button
 
 function initFloatingButton() {
@@ -38,14 +36,10 @@ function initFloatingButton() {
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) return;
     hideFloatingButton();
-    _mouseDownPos   = { x: e.clientX, y: e.clientY };
-    _mouseDownMulti = e.detail >= 2; // double- or triple-click
   });
 
   document.addEventListener("mouseup", onSelectionMouseUp);
 
-  // Belt-and-suspenders: also hide on selectionchange → covers keyboard deselection
-  // (e.g. pressing Escape or Ctrl+A then typing) where no mousedown/up fires.
   document.addEventListener("selectionchange", () => {
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
@@ -55,22 +49,11 @@ function initFloatingButton() {
 }
 
 function onSelectionMouseUp(e) {
-  // Ignore clicks on extension UI — the button's own onclick handles those.
   if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
 
   const sel  = window.getSelection();
   const text = sel?.toString().trim();
   if (!text) { hideFloatingButton(); return; }
-
-  // A plain single click (no drag, not a double/triple-click) should not show the
-  // button. When clicking on already-selected text, Chrome keeps the selection alive
-  // through mouseup and only collapses it afterward via selectionchange, so we'd
-  // otherwise re-show the button on every click on selected text.
-  const dragged = _mouseDownPos && (
-    Math.abs(e.clientX - _mouseDownPos.x) > 3 ||
-    Math.abs(e.clientY - _mouseDownPos.y) > 3
-  );
-  if (!dragged && !_mouseDownMulti) return;
 
   if (_cachedOptions !== null) {
     maybeShowFloatingButton(sel, _cachedOptions);
