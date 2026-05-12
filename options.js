@@ -86,6 +86,10 @@ function migratePrompt(prompt) {
   if (prompt.promptSettings && !prompt.extraParams) prompt.extraParams = prompt.promptSettings;
   prompt.outputMode     = prompt.outputMode     || "popup";
   prompt.followUpRounds = prompt.followUpRounds ?? 1;
+  // Fields added in the refactor — old stored prompts won't have these
+  prompt.context        = prompt.context        || "selection";
+  prompt.content        = prompt.content        ?? "";
+  prompt.userContent    = prompt.userContent    ?? "";
   return prompt;
 }
 

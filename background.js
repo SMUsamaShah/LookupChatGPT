@@ -46,7 +46,7 @@ function createContextMenus(result) {
       chrome.contextMenus.create({
         id:       `${PROMPT_ID_PREFIX}-${i}`,
         title:    entry.title,
-        contexts: [entry.context],
+        contexts: [entry.context || "selection"],
       });
     });
   });
@@ -75,12 +75,17 @@ function normalizeOptions(options) {
 }
 
 function normalizePrompt(prompt) {
+  if (!prompt) return new StoredPrompt(); // guard against a missing entry
   // Old format used a boolean `replaceText`; map it to the string outputMode
   if (prompt.replaceText === true && !prompt.outputMode) prompt.outputMode = "replace";
   // Old format used `promptSettings` for raw API JSON; treat it as extraParams
   if (prompt.promptSettings && !prompt.extraParams) prompt.extraParams = prompt.promptSettings;
   prompt.outputMode     = prompt.outputMode     || "popup";
   prompt.followUpRounds = prompt.followUpRounds ?? 1;
+  // Fields added in the refactor — old stored prompts won't have these
+  prompt.context        = prompt.context        || "selection";
+  prompt.content        = prompt.content        ?? "";
+  prompt.userContent    = prompt.userContent    ?? "";
   return prompt;
 }
 

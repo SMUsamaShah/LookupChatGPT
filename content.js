@@ -83,7 +83,7 @@ function maybeShowFloatingButton(sel, opts) {
 
   const enabledPrompts = (opts.promptData || [])
     .map((p, i) => ({ ...p, id: i }))
-    .filter((p) => p.enabled && p.context === "selection");
+    .filter((p) => p.enabled && (!p.context || p.context === "selection"));
   if (enabledPrompts.length === 0) return;
 
   const defaultId     = opts.selectionButton.defaultPromptId ?? 0;
