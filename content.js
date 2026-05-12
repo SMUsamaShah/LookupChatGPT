@@ -16,9 +16,8 @@ chrome.runtime.onMessage.addListener((message) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-let _cachedOptions        = null;  // invalidated whenever storage changes
-let _loadingOptions       = false; // prevents duplicate in-flight storage reads
-let _selectionAtMouseDown = "";    // selection text snapshotted at mousedown; see onSelectionMouseUp
+let _cachedOptions  = null;  // invalidated whenever storage changes
+let _loadingOptions = false; // prevents duplicate in-flight storage reads
 
 function initFloatingButton() {
   // Inject hover/active styles for the floating button once per page.
@@ -36,9 +35,6 @@ function initFloatingButton() {
 
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) return;
-    // Snapshot the selection NOW so mouseup can tell whether the user made a
-    // genuinely new selection or just clicked something that left the old one intact.
-    _selectionAtMouseDown = window.getSelection()?.toString().trim() || "";
     hideFloatingButton();
   });
 
@@ -55,16 +51,12 @@ function initFloatingButton() {
 }
 
 function onSelectionMouseUp(e) {
+  // Ignore clicks on extension UI — the button's own onclick handles those.
   if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
 
   const sel  = window.getSelection();
   const text = sel?.toString().trim();
   if (!text) { hideFloatingButton(); return; }
-
-  // If the selection text is unchanged from mousedown, the user clicked something
-  // that kept the old selection alive (a button, input, etc.) rather than making
-  // a new one. mousedown already hid the button, so don't re-show it.
-  if (text === _selectionAtMouseDown) return;
 
   if (_cachedOptions !== null) {
     maybeShowFloatingButton(sel, _cachedOptions);
