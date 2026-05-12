@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Result Panel Preview</title>
+<style>
+  body { background: #888; font-family: Georgia, serif; font-size: 18px; padding: 40px; }
+
+  /* ── Current look ── */
+  #current { margin-bottom: 40px; }
+  #current .lcgpt-result-panel {
+    color: #000;
+    position: relative;
+    padding: 10px 20px 10px 10px;
+    background-color: #fff;
+    border: 1px solid #000;
+    max-width: 420px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  #current .lcgpt-button-container {
+    position: absolute; top: 0; right: 0; display: flex;
+  }
+  #current .lcgpt-btn-dismiss,
+  #current .lcgpt-btn-regen {
+    display: inline-block; padding: 2px 5px; cursor: pointer;
+    background: none; border: none; font-size: 12px; line-height: 1; color: #555;
+  }
+  #current .lcgpt-title {
+    display: block; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; padding-right: 40px; font-weight: bold; margin-bottom: 6px;
+  }
+  #current .lcgpt-message { white-space: pre-wrap; }
+
+  /* ── Proposed look ── */
+  #proposed .lcgpt-result-panel {
+    color: #1a1a1a;
+    position: relative;
+    padding: 10px 10px 10px 12px;
+    background-color: #fff;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    max-width: 420px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #proposed .lcgpt-button-container {
+    position: absolute; top: 6px; right: 6px; display: flex; gap: 4px;
+  }
+  #proposed .lcgpt-btn-dismiss,
+  #proposed .lcgpt-btn-regen {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    cursor: pointer;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1;
+    color: #444;
+  }
+  #proposed .lcgpt-btn-dismiss:hover,
+  #proposed .lcgpt-btn-regen:hover { background: #e0e0e0; border-color: #aaa; }
+  #proposed .lcgpt-title {
+    display: block; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; padding-right: 56px;
+    font-size: 12px; font-weight: bold; color: #666;
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  #proposed .lcgpt-message { white-space: pre-wrap; }
+  #proposed .lcgpt-question {
+    border: 1px solid #ccc; border-radius: 4px;
+    min-height: 1.4em; margin-top: 8px; padding: 4px 6px;
+    width: 100%; outline: none; background: #fafafa; color: #000;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<h2 style="color:#fff;font-family:Arial">Current</h2>
+<div id="current">
+  <div class="lcgpt-result-panel">
+    <b class="lcgpt-title">[What's this?: photosynthesis]</b>
+    <div class="lcgpt-message">Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose.</div>
+    <div class="lcgpt-button-container">
+      <button class="lcgpt-btn-regen">r</button>
+      <button class="lcgpt-btn-dismiss">x</button>
+    </div>
+  </div>
+</div>
+
+<h2 style="color:#fff;font-family:Arial">Proposed</h2>
+<div id="proposed">
+  <div class="lcgpt-result-panel">
+    <span class="lcgpt-title">What's this? · photosynthesis</span>
+    <div class="lcgpt-message">Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose.</div>
+    <div class="lcgpt-question" contenteditable placeholder="Ask a follow-up…"></div>
+    <div class="lcgpt-button-container">
+      <button class="lcgpt-btn-regen" title="Re-run">↺</button>
+      <button class="lcgpt-btn-dismiss" title="Close">✕</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
