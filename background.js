@@ -69,8 +69,8 @@ function normalizeOptions(options) {
   options.defaultProvider = options.defaultProvider || "openai";
   options.providers       = options.providers || { openai: { token: "", model: "" } };
   options.selectionButton = options.selectionButton || { enabled: false, defaultPromptId: 0 };
-  // Migrate CSS stored by older versions; must happen before the CSS is sent to the content script
-  options.defaultPopupStyle = migrateCSSClassNames(options.defaultPopupStyle);
+  // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
+  options.defaultPopupStyle = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
   return options;
 }
 
