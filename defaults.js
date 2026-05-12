@@ -54,8 +54,13 @@ $ = (id) => document.getElementById(id);
 function migrateCSSClassNames(css) {
   if (!css || !css.includes("lookupchatgpt")) return css;
   return css
+    // Oldest names: lookupchatgpt-popup-* (before the "result-dialog" rename)
+    .replace(/#lookupchatgpt-popup-container\b/g,         "#lcgpt-result-container")
+    .replace(/\.lookupchatgpt-popup\b/g,                  ".lcgpt-result-panel")
+    // Intermediate names: lookupchatgpt-result-dialog-*
     .replace(/#lookupchatgpt-result-dialog-container\b/g, "#lcgpt-result-container")
     .replace(/\.lookupchatgpt-result-dialog\b/g,          ".lcgpt-result-panel")
+    // Sub-class names (may appear with any of the above outer classes)
     .replace(/\.lookupchatgpt-title\b/g,                  ".lcgpt-title")
     .replace(/\.lookupchatgpt-message\b/g,                ".lcgpt-message")
     .replace(/\.lookupchatgpt-question\b/g,               ".lcgpt-question")
