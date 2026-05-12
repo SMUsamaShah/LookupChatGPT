@@ -14,22 +14,6 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   color: #000;
   box-sizing: border-box;
 }
-#lcgpt-result-container * {
-  box-sizing: border-box;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  color: inherit;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  text-decoration: none;
-  text-transform: none;
-  letter-spacing: normal;
-  word-spacing: normal;
-  white-space: normal;
-}
 .lcgpt-result-panel {
   color: #000;
   position: relative;
