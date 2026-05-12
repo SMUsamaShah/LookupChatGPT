@@ -14,7 +14,7 @@
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["popup.js"],
+    "js": ["content.js"],
     "run_at": "document_end"
   }],
   "options_page": "options.html",
@@ -22,7 +22,7 @@
     "128": "icon.png"
   },
   "action": {
-		"default_popup": "button_popup.html",
+		"default_popup": "toolbar_popup.html",
 		"default_icon": {
 		 "128": "icon.png"
 		}

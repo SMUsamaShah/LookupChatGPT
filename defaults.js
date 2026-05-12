@@ -1,6 +1,6 @@
 // ── Visual defaults ───────────────────────────────────────────────────────────
 
-const DEFAULT_POPUP_STYLE = `#lookupchatgpt-popup-container {
+const DEFAULT_POPUP_STYLE = `#lookupchatgpt-result-dialog-container {
   position: fixed;
   top: 10px;
   left: 10px;
@@ -9,7 +9,7 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-popup-container {
   z-index: 999999;
   max-width: 60vw;
 }
-.lookupchatgpt-popup {
+.lookupchatgpt-result-dialog {
   color: black;
   position: relative;
   padding: 10px;
@@ -22,12 +22,12 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-popup-container {
   overflow-y: auto;
   resize: both;
 }
-.lookupchatgpt-popup .lookupchatgpt-button-container {
+.lookupchatgpt-result-dialog .lookupchatgpt-button-container {
   position: absolute;
   top: 0;
   right: 0;
 }
-.lookupchatgpt-popup .lookupchatgpt-title {
+.lookupchatgpt-result-dialog .lookupchatgpt-title {
   overflow: hidden;
   text-overflow: ellipsis;
   width: initial;
@@ -35,7 +35,7 @@ const DEFAULT_POPUP_STYLE = `#lookupchatgpt-popup-container {
   display: block;
   padding-right: 30px;
 }
-.lookupchatgpt-popup .lookupchatgpt-message {
+.lookupchatgpt-result-dialog .lookupchatgpt-message {
 }`;
 
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
@@ -57,7 +57,7 @@ class StoredPrompt {
   enabled     = true;
   context     = "selection"; // "selection" = appears on right-click of selected text | "page" = always appears
   outputMode  = "popup";     // "popup" = show result in floating popup | "replace" = replace selected text in-place
-  popupStyle  = "";          // CSS override applied inline to .lookupchatgpt-popup for this prompt
+  popupStyle  = "";          // CSS override applied inline to .lookupchatgpt-result-dialog for this prompt
 
   // Controls the follow-up input box shown below every result popup:
   //   0 = hide it entirely (one-shot prompt — translate, replace-text, etc.)

@@ -1,6 +1,6 @@
 // Content script — injected into every page at document_end.
 // Responsibilities:
-//   1. Display result popups (displayResult)
+//   1. Display result dialogs (displayResult)
 //   2. Show a floating ✦ button near text selections when the feature is enabled
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -54,7 +54,7 @@ function initFloatingButton() {
 }
 
 function onSelectionMouseUp(e) {
-  if (e.target.closest("#lcgpt-float-btn, #lookupchatgpt-popup-container")) return;
+  if (e.target.closest("#lcgpt-float-btn, #lookupchatgpt-result-container")) return;
 
   const sel  = window.getSelection();
   const text = sel?.toString().trim();
@@ -154,7 +154,7 @@ function runFloatingPrompt(promptId) {
 
 initFloatingButton();
 
-// ── Result popup ──────────────────────────────────────────────────────────────
+// ── Result dialog ─────────────────────────────────────────────────────────────
 
 function displayResult(lookup) {
   if (lookup.prompt.outputMode === "replace") {
@@ -162,27 +162,27 @@ function displayResult(lookup) {
     return;
   }
 
-  // Inject shared popup CSS once per page
-  if (!document.getElementById("lookupchatgpt-popup-style")) {
+  // Inject shared result dialog CSS once per page
+  if (!document.getElementById("lookupchatgpt-result-style")) {
     const style  = document.createElement("style");
-    style.id     = "lookupchatgpt-popup-style";
+    style.id     = "lookupchatgpt-result-style";
     style.innerHTML = lookup.options.defaultPopupStyle;
     document.head.appendChild(style);
   }
 
-  let container = document.getElementById("lookupchatgpt-popup-container");
+  let container = document.getElementById("lookupchatgpt-result-container");
   if (!container) {
     container    = document.createElement("div");
-    container.id = "lookupchatgpt-popup-container";
+    container.id = "lookupchatgpt-result-container";
     document.body.appendChild(container);
   }
 
   // followUpRounds = 0 means one-shot: hide the follow-up input box entirely
   const showFollowUp = (lookup.prompt.followUpRounds ?? 1) > 0;
 
-  const popup = document.createElement("div");
-  popup.innerHTML = `
-    <div class="lookupchatgpt-popup" style="${lookup.prompt.popupStyle}">
+  const dialog = document.createElement("div");
+  dialog.innerHTML = `
+    <div class="lookupchatgpt-result-dialog" style="${lookup.prompt.popupStyle}">
       <b class="lookupchatgpt-title">[${lookup.prompt.title}: ${lookup.prompt.userContent}]</b>
       <div class="lookupchatgpt-message">${lookup.lookupResult}</div>
       ${showFollowUp
@@ -196,14 +196,14 @@ function displayResult(lookup) {
       </div>
     </div>
   `;
-  container.appendChild(popup);
+  container.appendChild(dialog);
 
   // Dismiss
-  popup.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => popup.remove());
+  dialog.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => dialog.remove());
 
   // Regenerate — re-runs the original prompt, clearing any follow-up state
-  popup.querySelector(".lcgpt-btn-regen").addEventListener("click", () => {
-    popup.remove();
+  dialog.querySelector(".lcgpt-btn-regen").addEventListener("click", () => {
+    dialog.remove();
     lookup.userQuestion = "";
     lookup.history      = [];
     chrome.runtime.sendMessage({ action: "relookup", lookup });
@@ -211,7 +211,7 @@ function displayResult(lookup) {
 
   if (!showFollowUp) return;
 
-  const questionInput = popup.querySelector(".lookupchatgpt-question");
+  const questionInput = dialog.querySelector(".lookupchatgpt-question");
   questionInput.addEventListener("keypress", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -241,7 +241,7 @@ function displayResult(lookup) {
 
     lookup.userQuestion = newQuestion;
     chrome.runtime.sendMessage({ action: "relookup", lookup });
-    popup.remove();
+    dialog.remove();
   });
 }
 
