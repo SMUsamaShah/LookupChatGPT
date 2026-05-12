@@ -74,6 +74,8 @@ function migrateOptions(opts) {
     opts.providers[key] = opts.providers[key] || { token: "", model: "" };
   }
   opts.selectionButton = opts.selectionButton || { enabled: false, defaultPromptId: 0 };
+  // Migrate CSS stored by older versions so the textarea reflects the current class names
+  opts.defaultPopupStyle = migrateCSSClassNames(opts.defaultPopupStyle);
   return opts;
 }
 

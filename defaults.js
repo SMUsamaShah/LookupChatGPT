@@ -41,12 +41,26 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
 const DEFAULT_SELECTED_TEXT_PROMPT_TITLE   = "What's this?";
 
-// ── Shared helper ─────────────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
 // Shorthand for document.getElementById, used in popup and options scripts.
 // Defined without `const` so it works as a plain global in both page and worker contexts
 // (in the service worker it's never called, so referencing `document` here is safe).
 $ = (id) => document.getElementById(id);
+
+// Rewrites CSS stored by older versions of the extension to use the current
+// lcgpt-* selector names. Called by normalizeOptions() in both background.js
+// and options.js so the migration happens at every load path.
+function migrateCSSClassNames(css) {
+  if (!css || !css.includes("lookupchatgpt")) return css;
+  return css
+    .replace(/#lookupchatgpt-result-dialog-container\b/g, "#lcgpt-result-container")
+    .replace(/\.lookupchatgpt-result-dialog\b/g,          ".lcgpt-result-panel")
+    .replace(/\.lookupchatgpt-title\b/g,                  ".lcgpt-title")
+    .replace(/\.lookupchatgpt-message\b/g,                ".lcgpt-message")
+    .replace(/\.lookupchatgpt-question\b/g,               ".lcgpt-question")
+    .replace(/\.lookupchatgpt-button-container\b/g,       ".lcgpt-button-container");
+}
 
 // ── Data classes ──────────────────────────────────────────────────────────────
 
