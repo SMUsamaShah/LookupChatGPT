@@ -7,7 +7,8 @@
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*"
   ],
   "background": {
     "scripts": ["background.js"]

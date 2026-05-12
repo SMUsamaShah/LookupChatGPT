@@ -107,16 +107,6 @@ function processPrompt(prompt, varData) {
 
 // ── Lookup assembly ───────────────────────────────────────────────────────────
 
-function buildLookup(options, prompt, tabId, promptId, selectedText) {
-  const lookup        = new Lookup();
-  lookup.selectedText = selectedText;
-  lookup.tabId        = tabId;
-  lookup.promptId     = promptId ?? "";
-  lookup.prompt       = prompt;
-  lookup.options      = options;
-  return lookup;
-}
-
 // ── Message handlers ──────────────────────────────────────────────────────────
 
 function handleContextMenuClicked(info, tab) {
@@ -126,7 +116,8 @@ function handleContextMenuClicked(info, tab) {
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
     processPrompt(prompt, { selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url });
-    sendRequestToAPI(buildLookup(options, prompt, tab.id, promptId, info.selectionText));
+    const lookup = Object.assign(new Lookup(), { selectedText: info.selectionText, tabId: tab.id, promptId, prompt, options });
+    sendRequestToAPI(lookup);
   }).catch((err) => console.error("lcgpt: context menu handler failed:", err));
 }
 
@@ -134,10 +125,10 @@ function handleExtButtonMessage(userText, tab, selectedText, promptId) {
   chrome.storage.local.get(null).then((options) => {
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
-    // Any text typed in the extension button popup is prepended to the prompt's user message
     if (userText) prompt.userContent = userText + "\n" + prompt.userContent;
     processPrompt(prompt, { selectedText, pageTitle: tab.title, pageURL: tab.url });
-    sendRequestToAPI(buildLookup(options, prompt, tab.id, promptId, selectedText));
+    const lookup = Object.assign(new Lookup(), { selectedText, tabId: tab.id, promptId, prompt, options });
+    sendRequestToAPI(lookup);
   }).catch((err) => console.error("lcgpt: ext button handler failed:", err));
 }
 
@@ -146,7 +137,8 @@ function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, 
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
     processPrompt(prompt, { selectedText, pageTitle, pageURL });
-    sendRequestToAPI(buildLookup(options, prompt, tabId, promptId, selectedText));
+    const lookup = Object.assign(new Lookup(), { selectedText, tabId, promptId, prompt, options });
+    sendRequestToAPI(lookup);
   }).catch((err) => console.error("lcgpt: selection button handler failed:", err));
 }
 

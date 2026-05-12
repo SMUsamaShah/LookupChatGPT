@@ -178,9 +178,7 @@ function displayResult(lookup) {
       <b class="lcgpt-title">[${lookup.prompt.title}: ${lookup.prompt.userContent}]</b>
       <div class="lcgpt-message">${lookup.lookupResult}</div>
       ${showFollowUp
-        ? `<div class="lcgpt-question" contenteditable
-               style="border:1px solid #ccc;width:100%;min-height:1.4em;margin-top:4px;padding:2px"
-               placeholder="Ask a follow-up…"></div>`
+        ? `<div class="lcgpt-question" contenteditable placeholder="Ask a follow-up…"></div>`
         : ""}
       <div class="lcgpt-button-container">
         <button class="lcgpt-btn-regen"    title="Re-run original prompt">r</button>

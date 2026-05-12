@@ -96,6 +96,33 @@ const PROVIDERS = {
     },
   },
 
+  openrouter: {
+    label:        "OpenRouter",
+    defaultModel: "openai/gpt-4o-mini",
+
+    buildRequest({ systemPrompt, userContent, history, lookupResult, userQuestion, model, extraParams }) {
+      const messages = [];
+      if (systemPrompt) messages.push({ role: "system",    content: systemPrompt });
+      if (userContent)  messages.push({ role: "user",      content: userContent  });
+      for (const turn of history) messages.push(turn);
+      if (userQuestion) {
+        if (history.length === 0) messages.push({ role: "assistant", content: lookupResult });
+        messages.push({ role: "user", content: userQuestion });
+      }
+
+      return {
+        url:     "https://openrouter.ai/api/v1/chat/completions",
+        headers: (apiKey) => ({ "Authorization": `Bearer ${apiKey}` }),
+        body:    { model, messages, ...extraParams },
+      };
+    },
+
+    parseResponse(json) {
+      if (json.error) return { error: json.error.message };
+      return { result: json.choices[0].message.content };
+    },
+  },
+
   google: {
     label:        "Google Gemini",
     defaultModel: "gemini-1.5-flash",

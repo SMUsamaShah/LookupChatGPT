@@ -1,41 +1,86 @@
 // ── Visual defaults ───────────────────────────────────────────────────────────
 
 const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  padding: 10px;
-  padding-right: 20px;
-  z-index: 999999;
-  max-width: 60vw;
+  all: initial;
+  display: block;
+  position: fixed !important;
+  top: 10px !important;
+  left: 10px !important;
+  z-index: 999999 !important;
+  max-width: 60vw !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  color: #000 !important;
+  box-sizing: border-box !important;
+}
+#lcgpt-result-container * {
+  box-sizing: border-box !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  color: inherit !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  white-space: normal !important;
 }
 .lcgpt-result-panel {
-  color: black;
-  position: relative;
-  padding: 10px;
-  padding-right: 20px;
-  background-color: white;
-  border: 1px solid black;
-  font-family: Arial, sans-serif;
-  margin-right: 10px;
-  max-height: 45vh;
-  overflow-y: auto;
-  resize: both;
+  color: #000 !important;
+  position: relative !important;
+  padding: 10px 20px 10px 10px !important;
+  background-color: #fff !important;
+  border: 1px solid #000 !important;
+  border-radius: 0 !important;
+  margin-bottom: 6px !important;
+  max-height: 45vh !important;
+  overflow-y: auto !important;
+  resize: both !important;
+  box-shadow: none !important;
 }
 .lcgpt-result-panel .lcgpt-button-container {
-  position: absolute;
-  top: 0;
-  right: 0;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  display: flex !important;
+}
+.lcgpt-result-panel .lcgpt-btn-dismiss,
+.lcgpt-result-panel .lcgpt-btn-regen {
+  display: inline-block !important;
+  padding: 2px 5px !important;
+  cursor: pointer !important;
+  background: none !important;
+  border: none !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  color: #555 !important;
 }
 .lcgpt-result-panel .lcgpt-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: initial;
-  white-space: nowrap;
-  display: block;
-  padding-right: 30px;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding-right: 40px !important;
+  font-weight: bold !important;
+  margin-bottom: 6px !important;
 }
 .lcgpt-result-panel .lcgpt-message {
+  white-space: pre-wrap !important;
+}
+.lcgpt-result-panel .lcgpt-question {
+  border: 1px solid #ccc !important;
+  min-height: 1.4em !important;
+  margin-top: 6px !important;
+  padding: 2px 4px !important;
+  width: 100% !important;
+  outline: none !important;
+  background: #fff !important;
+  color: #000 !important;
 }`;
 
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
@@ -99,9 +144,10 @@ class Options {
   // Per-provider configuration. Add a matching entry here when adding a new provider to providers.js.
   // token is required to call that provider; model is optional (empty = use the provider's defaultModel).
   providers = {
-    openai:    { token: "", model: "" },
-    anthropic: { token: "", model: "" },
-    google:    { token: "", model: "" },
+    openai:      { token: "", model: "" },
+    anthropic:   { token: "", model: "" },
+    google:      { token: "", model: "" },
+    openrouter:  { token: "", model: "" },
   };
 
   defaultPopupStyle         = "";
