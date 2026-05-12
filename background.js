@@ -122,39 +122,32 @@ function buildLookup(options, prompt, tabId, promptId, selectedText) {
 function handleContextMenuClicked(info, tab) {
   const parts    = info.menuItemId.split("-");
   const promptId = parts[parts.length - 1];
-  console.log("[lcgpt] context menu clicked, promptId=", promptId, "tabId=", tab?.id);
-
   chrome.storage.local.get(null).then((options) => {
-    console.log("[lcgpt] storage loaded, promptData length=", options.promptData?.length);
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
-    console.log("[lcgpt] prompt=", JSON.stringify(prompt));
     processPrompt(prompt, { selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url });
     sendRequestToAPI(buildLookup(options, prompt, tab.id, promptId, info.selectionText));
-  }).catch((err) => console.error("[lcgpt] handleContextMenuClicked failed:", err));
+  }).catch((err) => console.error("lcgpt: context menu handler failed:", err));
 }
 
 function handleExtButtonMessage(userText, tab, selectedText, promptId) {
-  console.log("[lcgpt] ext button message, promptId=", promptId, "tabId=", tab?.id);
   chrome.storage.local.get(null).then((options) => {
-    console.log("[lcgpt] storage loaded, promptData length=", options.promptData?.length);
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
+    // Any text typed in the extension button popup is prepended to the prompt's user message
     if (userText) prompt.userContent = userText + "\n" + prompt.userContent;
     processPrompt(prompt, { selectedText, pageTitle: tab.title, pageURL: tab.url });
     sendRequestToAPI(buildLookup(options, prompt, tab.id, promptId, selectedText));
-  }).catch((err) => console.error("[lcgpt] handleExtButtonMessage failed:", err));
+  }).catch((err) => console.error("lcgpt: ext button handler failed:", err));
 }
 
 function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, tabId) {
-  console.log("[lcgpt] selection button click, promptId=", promptId, "tabId=", tabId);
   chrome.storage.local.get(null).then((options) => {
-    console.log("[lcgpt] storage loaded, promptData length=", options.promptData?.length);
     normalizeOptions(options);
     const prompt = normalizePrompt(options.promptData[promptId]);
     processPrompt(prompt, { selectedText, pageTitle, pageURL });
     sendRequestToAPI(buildLookup(options, prompt, tabId, promptId, selectedText));
-  }).catch((err) => console.error("[lcgpt] handleSelectionButtonClick failed:", err));
+  }).catch((err) => console.error("lcgpt: selection button handler failed:", err));
 }
 
 // ── Tab messaging ─────────────────────────────────────────────────────────────
@@ -163,13 +156,11 @@ function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, 
 // Retries with exponential backoff in case the content script isn't ready yet
 // (e.g. document_end hasn't fired, or the page is still loading).
 function sendMessageToTab(tabId, message, retries = 5, delay = 200) {
-  console.log("[lcgpt] sendMessageToTab tabId=", tabId, "retries left=", retries);
   chrome.tabs.sendMessage(tabId, message).catch((err) => {
-    console.warn("[lcgpt] sendMessage failed (retries left=" + retries + "):", err.message);
     if (retries > 0) {
       setTimeout(() => sendMessageToTab(tabId, message, retries - 1, delay * 1.5), delay);
     } else {
-      console.error("[lcgpt] Could not deliver message to tab after retries:", err);
+      console.error("lcgpt: could not deliver message to tab after retries:", err);
     }
   });
 }
@@ -180,15 +171,13 @@ function sendRequestToAPI(lookup) {
   // Resolve provider: per-prompt override → global default → fallback to openai
   const providerKey = lookup.prompt.providerOverride || lookup.options.defaultProvider || "openai";
   const provider    = PROVIDERS[providerKey];
-  console.log("[lcgpt] sendRequestToAPI: provider=", providerKey, "tabId=", lookup.tabId);
   if (!provider) {
-    console.error(`[lcgpt] Unknown provider "${providerKey}". Check your settings.`);
+    console.error(`lcgpt: unknown provider "${providerKey}". Check your settings.`);
     return;
   }
 
   const providerSettings = lookup.options.providers?.[providerKey] || {};
   const apiKey           = providerSettings.token || "";
-  console.log("[lcgpt] apiKey present=", !!apiKey);
 
   // Model priority: per-prompt override → per-provider setting in options → provider's built-in default
   const model = lookup.prompt.modelOverride || providerSettings.model || provider.defaultModel;
@@ -198,7 +187,7 @@ function sendRequestToAPI(lookup) {
     try {
       extraParams = JSON.parse(lookup.prompt.extraParams);
     } catch {
-      console.warn("[lcgpt] Invalid extraParams JSON — ignoring:", lookup.prompt.extraParams);
+      console.warn("lcgpt: invalid extraParams JSON — ignoring:", lookup.prompt.extraParams);
     }
   }
 
@@ -212,20 +201,17 @@ function sendRequestToAPI(lookup) {
     extraParams,
   });
 
-  console.log("[lcgpt] fetching", url);
   fetch(url, {
     method:  "POST",
     mode:    "cors",
     headers: { ...headers(apiKey), "content-type": "application/json" },
     body:    JSON.stringify(body),
   })
-  .then((r) => { console.log("[lcgpt] HTTP status:", r.status); return r.json(); })
+  .then((r) => r.json())
   .then((json) => {
-    console.log("[lcgpt] response keys:", Object.keys(json));
     const { result, error } = provider.parseResponse(json);
     lookup.lookupResult = result || error || "No response received.";
-    console.log("[lcgpt] sending displayResult to tab", lookup.tabId, "result length=", lookup.lookupResult.length);
     sendMessageToTab(lookup.tabId, { action: "displayResult", lookup });
   })
-  .catch((err) => console.error("[lcgpt] API request failed:", err));
+  .catch((err) => console.error("lcgpt: API request failed:", err));
 }
