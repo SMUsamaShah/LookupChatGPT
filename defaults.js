@@ -3,84 +3,82 @@
 const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   all: initial;
   display: block;
-  position: fixed !important;
-  top: 10px !important;
-  left: 10px !important;
-  z-index: 999999 !important;
-  max-width: 60vw !important;
-  font-family: Arial, sans-serif !important;
-  font-size: 14px !important;
-  line-height: 1.4 !important;
-  color: #000 !important;
-  box-sizing: border-box !important;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 999999;
+  max-width: 60vw;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #000;
+  box-sizing: border-box;
 }
 #lcgpt-result-container * {
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: none !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  word-spacing: normal !important;
-  white-space: normal !important;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: normal;
 }
 .lcgpt-result-panel {
-  color: #000 !important;
-  position: relative !important;
-  padding: 10px 20px 10px 10px !important;
-  background-color: #fff !important;
-  border: 1px solid #000 !important;
-  border-radius: 0 !important;
-  margin-bottom: 6px !important;
-  max-height: 45vh !important;
-  overflow-y: auto !important;
-  resize: both !important;
-  box-shadow: none !important;
+  color: #000;
+  position: relative;
+  padding: 10px 20px 10px 10px;
+  background-color: #fff;
+  border: 1px solid #000;
+  margin-bottom: 6px;
+  max-height: 45vh;
+  overflow-y: auto;
+  resize: both;
 }
 .lcgpt-result-panel .lcgpt-button-container {
-  position: absolute !important;
-  top: 0 !important;
-  right: 0 !important;
-  display: flex !important;
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
 }
 .lcgpt-result-panel .lcgpt-btn-dismiss,
 .lcgpt-result-panel .lcgpt-btn-regen {
-  display: inline-block !important;
-  padding: 2px 5px !important;
-  cursor: pointer !important;
-  background: none !important;
-  border: none !important;
-  font-size: 12px !important;
-  line-height: 1 !important;
-  color: #555 !important;
+  display: inline-block;
+  padding: 2px 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  color: #555;
 }
 .lcgpt-result-panel .lcgpt-title {
-  display: block !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  padding-right: 40px !important;
-  font-weight: bold !important;
-  margin-bottom: 6px !important;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 40px;
+  font-weight: bold;
+  margin-bottom: 6px;
 }
 .lcgpt-result-panel .lcgpt-message {
-  white-space: pre-wrap !important;
+  white-space: pre-wrap;
 }
 .lcgpt-result-panel .lcgpt-question {
-  border: 1px solid #ccc !important;
-  min-height: 1.4em !important;
-  margin-top: 6px !important;
-  padding: 2px 4px !important;
-  width: 100% !important;
-  outline: none !important;
-  background: #fff !important;
-  color: #000 !important;
+  border: 1px solid #ccc;
+  min-height: 1.4em;
+  margin-top: 6px;
+  padding: 2px 4px;
+  width: 100%;
+  outline: none;
+  background: #fff;
+  color: #000;
 }`;
 
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
