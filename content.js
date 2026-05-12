@@ -150,7 +150,14 @@ initFloatingButton();
 // ── Result dialog ─────────────────────────────────────────────────────────────
 
 function displayResult(lookup) {
+  console.log("[lcgpt content] displayResult: outputMode=", lookup?.prompt?.outputMode,
+              "| result length=", lookup?.lookupResult?.length,
+              "| defaultPopupStyle length=", lookup?.options?.defaultPopupStyle?.length);
+
+  try {
+
   if (lookup.prompt.outputMode === "replace") {
+    console.log("[lcgpt content] replace mode — calling replaceSelectedText");
     replaceSelectedText(lookup.lookupResult);
     return;
   }
@@ -161,6 +168,7 @@ function displayResult(lookup) {
     style.id     = "lcgpt-result-style";
     style.innerHTML = lookup.options.defaultPopupStyle;
     document.head.appendChild(style);
+    console.log("[lcgpt content] style tag injected");
   }
 
   let container = document.getElementById("lcgpt-result-container");
@@ -168,6 +176,7 @@ function displayResult(lookup) {
     container    = document.createElement("div");
     container.id = "lcgpt-result-container";
     document.body.appendChild(container);
+    console.log("[lcgpt content] container created");
   }
 
   // followUpRounds = 0 means one-shot: hide the follow-up input box entirely
@@ -190,6 +199,7 @@ function displayResult(lookup) {
     </div>
   `;
   container.appendChild(dialog);
+  console.log("[lcgpt content] panel appended to DOM");
 
   // Dismiss
   dialog.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => dialog.remove());
@@ -236,6 +246,10 @@ function displayResult(lookup) {
     chrome.runtime.sendMessage({ action: "relookup", lookup });
     dialog.remove();
   });
+
+  } catch (err) {
+    console.error("[lcgpt content] displayResult threw:", err);
+  }
 }
 
 // ── Replace selected text ─────────────────────────────────────────────────────
