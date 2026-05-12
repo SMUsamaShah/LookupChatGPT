@@ -4,6 +4,7 @@
 //   2. Show a floating ✦ button near text selections when the feature is enabled
 
 chrome.runtime.onMessage.addListener((message) => {
+  console.log("[lcgpt content] message received:", message.action);
   if (message.action === "displayResult") displayResult(message.lookup);
 });
 
