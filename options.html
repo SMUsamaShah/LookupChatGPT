@@ -100,6 +100,18 @@
   Default prompt for the floating button:
   <select id="selectionButtonPrompt"><!-- populated dynamically by options.js --></select>
 </div>
+<div class="behavior-row">
+  Custom query output mode:
+  <select id="customQueryOutputMode">
+    <option value="auto">Auto-detect (replace if editable field, popup otherwise)</option>
+    <option value="popup">Always show popup</option>
+    <option value="replace">Always replace selected text</option>
+  </select>
+</div>
+<div class="behavior-row">
+  <label for="customQuerySystemPrompt">Custom query system prompt <span style="color:#999;font-size:11px">(optional — leave blank for no system message)</span></label><br>
+  <textarea id="customQuerySystemPrompt" style="width:500px;height:50px;margin-top:3px" placeholder="e.g. You are a helpful assistant."></textarea>
+</div>
 
 <!-- ── Prompts ────────────────────────────────────────────────────── -->
 <br>

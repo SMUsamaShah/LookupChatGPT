@@ -26,9 +26,10 @@ function initFloatingButton() {
     const s = document.createElement("style");
     s.id = "lcgpt-float-style";
     s.textContent = `
-      #lcgpt-float-btn button:hover  { background: #f0f0f0 !important; }
-      #lcgpt-float-btn button:active { background: #ddd    !important; }
-      .lcgpt-menu-item:hover         { background: #f0f0f0 !important; }
+      #lcgpt-float-btn button:hover       { background: #f0f0f0 !important; }
+      #lcgpt-float-btn button:active      { background: #ddd    !important; }
+      .lcgpt-menu-item:hover,
+      .lcgpt-menu-item--active            { background: #e8f0fe !important; }
     `;
     document.head.appendChild(s);
   }
@@ -74,10 +75,9 @@ function maybeShowFloatingButton(sel, opts) {
   const enabledPrompts = (opts.promptData || [])
     .map((p, i) => ({ ...p, id: i }))
     .filter((p) => p.enabled && (!p.context || p.context === "selection"));
-  if (enabledPrompts.length === 0) return;
 
   const defaultId     = opts.selectionButton.defaultPromptId ?? 0;
-  const defaultPrompt = enabledPrompts.find((p) => p.id === defaultId) || enabledPrompts[0];
+  const defaultPrompt = enabledPrompts.find((p) => p.id === defaultId) || enabledPrompts[0] || null;
   showFloatingButton(sel, enabledPrompts, defaultPrompt);
 }
 
@@ -95,30 +95,91 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     document.body.appendChild(btn);
   }
 
+  const esc        = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
+
   btn.innerHTML = `
-    <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit;color:inherit"></button>
+    <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit;color:inherit">${mainLabel}</button>
     <button id="lcgpt-float-arrow" style="border:none;border-left:1px solid #ccc;background:none;padding:4px 6px;cursor:pointer;font-size:11px;color:inherit" title="Choose prompt">▾</button>
-    <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);white-space:nowrap;min-width:100%;z-index:1"></div>
+    <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;min-width:220px;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:1"></div>
   `;
 
-  btn.querySelector("#lcgpt-float-main").textContent = `✦ ${defaultPrompt.title}`;
+  const menu = btn.querySelector("#lcgpt-float-menu");
+
+  function openMenu() {
+    menu.innerHTML = `
+      <div style="padding:4px;border-bottom:1px solid #eee">
+        <input id="lcgpt-float-search" type="text" autocomplete="off"
+               placeholder="Type a question or filter prompts…"
+               style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;padding:3px 6px;font-size:12px;font-family:Arial,sans-serif;color:#000;background:#fff;outline:none;">
+      </div>
+      <div id="lcgpt-float-list" style="max-height:130px;overflow-y:auto;"></div>
+    `;
+    const searchInput = menu.querySelector("#lcgpt-float-search");
+    const listEl      = menu.querySelector("#lcgpt-float-list");
+
+    function renderList(filter) {
+      const filtered = filter
+        ? prompts.filter((p) => p.title.toLowerCase().includes(filter.toLowerCase()))
+        : prompts;
+      listEl.innerHTML = filtered.map((p) =>
+        `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer;color:#000;white-space:nowrap">${esc(p.title)}</div>`
+      ).join("");
+      listEl.querySelectorAll(".lcgpt-menu-item").forEach((item) => {
+        item.addEventListener("mouseover", () => setHighlight(item));
+        item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
+      });
+    }
+
+    function getHighlighted() { return listEl.querySelector(".lcgpt-menu-item--active"); }
+
+    function setHighlight(el) {
+      listEl.querySelectorAll(".lcgpt-menu-item--active").forEach((i) => i.classList.remove("lcgpt-menu-item--active"));
+      if (el) { el.classList.add("lcgpt-menu-item--active"); el.scrollIntoView({ block: "nearest" }); }
+    }
+
+    searchInput.addEventListener("input", () => { renderList(searchInput.value); setHighlight(null); });
+
+    searchInput.addEventListener("keydown", (e) => {
+      const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
+      const hi    = getHighlighted();
+      const idx   = hi ? items.indexOf(hi) : -1;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        menu.style.display = "none";
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (items.length) setHighlight(items[Math.min(idx + 1, items.length - 1)]);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (idx <= 0) setHighlight(null); else setHighlight(items[idx - 1]);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (hi) {
+          hideFloatingButton();
+          runFloatingPrompt(parseInt(hi.dataset.id));
+        } else {
+          const query = searchInput.value.trim();
+          if (query) { hideFloatingButton(); runCustomQuery(query); }
+        }
+      }
+    });
+
+    renderList("");
+    menu.style.display = "block";
+    searchInput.focus();
+  }
+
   btn.querySelector("#lcgpt-float-main").onclick = () => {
-    hideFloatingButton();
-    runFloatingPrompt(defaultPrompt.id);
+    if (defaultPrompt) { hideFloatingButton(); runFloatingPrompt(defaultPrompt.id); }
+    else openMenu();
   };
 
-  const menu = btn.querySelector("#lcgpt-float-menu");
   btn.querySelector("#lcgpt-float-arrow").onclick = (e) => {
     e.stopPropagation();
-    menu.style.display = menu.style.display === "none" ? "block" : "none";
+    if (menu.style.display === "none") openMenu(); else menu.style.display = "none";
   };
-
-  menu.innerHTML = prompts.map((p) =>
-    `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer;color:#000">${p.title}</div>`
-  ).join("");
-  menu.querySelectorAll("[data-id]").forEach((item) => {
-    item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
-  });
 
   // Store the page-coordinate anchor (above the selection) so the button can
   // follow the text when the page is scrolled.
@@ -157,6 +218,28 @@ function runFloatingPrompt(promptId) {
     pageTitle:    document.title,
     pageURL:      location.href,
   });
+}
+
+function runCustomQuery(queryText) {
+  chrome.runtime.sendMessage({
+    action:       "custom_selection_query",
+    queryText,
+    selectedText: window.getSelection().toString(),
+    pageTitle:    document.title,
+    pageURL:      location.href,
+    outputMode:   resolveCustomOutputMode(),
+  });
+}
+
+function resolveCustomOutputMode() {
+  const setting = _cachedOptions?.customQueryOutputMode || "auto";
+  if (setting !== "auto") return setting;
+  const el  = document.activeElement;
+  if (!el) return "popup";
+  if (el.isContentEditable) return "replace";
+  const tag = el.tagName.toLowerCase();
+  return (tag === "textarea" || (tag === "input" && /^(text|search|url|email|tel)$/.test(el.type || "text")))
+    ? "replace" : "popup";
 }
 
 initFloatingButton();

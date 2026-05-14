@@ -16,6 +16,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // sender.tab.id is used so the content script doesn't need to know its own tab ID
       handleSelectionButtonClick(request.promptId, request.selectedText, request.pageTitle, request.pageURL, sender.tab.id);
       return true;
+    case "custom_selection_query":
+      handleCustomSelectionQuery(request.queryText, request.selectedText, request.pageTitle, request.pageURL, request.outputMode, sender.tab.id);
+      return true;
     default:
       return false;
   }
@@ -70,7 +73,9 @@ function normalizeOptions(options) {
   options.providers       = options.providers || { openai: { token: "", model: "" } };
   options.selectionButton = options.selectionButton || { enabled: false, defaultPromptId: 0 };
   // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
-  options.defaultPopupStyle = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
+  options.defaultPopupStyle       = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
+  options.customQuerySystemPrompt = options.customQuerySystemPrompt ?? "";
+  options.customQueryOutputMode   = options.customQueryOutputMode   || "auto";
   return options;
 }
 
@@ -130,6 +135,22 @@ function handleExtButtonMessage(userText, tab, selectedText, promptId) {
     const lookup = Object.assign(new Lookup(), { selectedText, tabId: tab.id, promptId, prompt, options });
     sendRequestToAPI(lookup);
   }).catch((err) => console.error("lcgpt: ext button handler failed:", err));
+}
+
+function handleCustomSelectionQuery(queryText, selectedText, pageTitle, pageURL, outputMode, tabId) {
+  chrome.storage.local.get(null).then((options) => {
+    normalizeOptions(options);
+    const prompt          = new StoredPrompt();
+    prompt.title          = "Custom query";
+    prompt.content        = options.customQuerySystemPrompt || "";
+    prompt.userContent    = selectedText
+      ? `${queryText}\n\nSelected text:\n${selectedText}`
+      : queryText;
+    prompt.outputMode     = outputMode;
+    prompt.followUpRounds = 1;
+    const lookup = Object.assign(new Lookup(), { selectedText, tabId, promptId: "", prompt, options });
+    sendRequestToAPI(lookup);
+  }).catch((err) => console.error("lcgpt: custom query handler failed:", err));
 }
 
 function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, tabId) {

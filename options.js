@@ -36,7 +36,9 @@ function loadOptions(raw) {
 
   // Behavior — floating selection button
   const selBtn = opts.selectionButton || {};
-  $("selectionButtonEnabled").checked = selBtn.enabled || false;
+  $("selectionButtonEnabled").checked    = selBtn.enabled || false;
+  $("customQueryOutputMode").value       = opts.customQueryOutputMode   || "auto";
+  $("customQuerySystemPrompt").value     = opts.customQuerySystemPrompt || "";
 
   // Prompts — build both the table rows and the floating-button default dropdown
   if (opts.promptData) {
@@ -115,6 +117,8 @@ function saveOptions() {
     enabled:         $("selectionButtonEnabled").checked,
     defaultPromptId: parseInt($("selectionButtonPrompt").value) || 0,
   };
+  opts.customQueryOutputMode   = $("customQueryOutputMode").value;
+  opts.customQuerySystemPrompt = $("customQuerySystemPrompt").value.trim();
 
   // Prompts
   document.querySelectorAll("#promptTable tbody .promptRow").forEach((row) => {

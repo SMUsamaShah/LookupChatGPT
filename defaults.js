@@ -135,6 +135,10 @@ class Options {
   defaultPopupStyle         = "";
   buttonPopupSelectedPrompt = ""; // remembers the last-used prompt in the extension button popup
 
+  // Custom on-the-fly queries typed directly in the floating button dropdown
+  customQuerySystemPrompt = ""; // system prompt; empty = no system message (provider default behaviour)
+  customQueryOutputMode   = "auto"; // "auto" = replace if selection is editable, popup otherwise
+
   selectionButton = {
     enabled:         false, // show a floating ✦ button near any text selection (opt-in, off by default)
     defaultPromptId: 0,     // index into promptData — which prompt the main button click runs
