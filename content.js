@@ -90,14 +90,14 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
       "position:fixed", "z-index:999998", "display:flex", "align-items:stretch",
       "background:white", "border:1px solid #ccc", "border-radius:4px",
       "box-shadow:0 2px 8px rgba(0,0,0,0.18)", "font-family:Arial,sans-serif",
-      "font-size:12px", "cursor:default", "user-select:none",
+      "font-size:12px", "cursor:default", "user-select:none", "color:#000",
     ].join(";");
     document.body.appendChild(btn);
   }
 
   btn.innerHTML = `
-    <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit"></button>
-    <button id="lcgpt-float-arrow" style="border:none;border-left:1px solid #ccc;background:none;padding:4px 6px;cursor:pointer;font-size:11px" title="Choose prompt">▾</button>
+    <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit;color:inherit"></button>
+    <button id="lcgpt-float-arrow" style="border:none;border-left:1px solid #ccc;background:none;padding:4px 6px;cursor:pointer;font-size:11px;color:inherit" title="Choose prompt">▾</button>
     <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);white-space:nowrap;min-width:100%;z-index:1"></div>
   `;
 
@@ -114,7 +114,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   };
 
   menu.innerHTML = prompts.map((p) =>
-    `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer">${p.title}</div>`
+    `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer;color:#000">${p.title}</div>`
   ).join("");
   menu.querySelectorAll("[data-id]").forEach((item) => {
     item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
