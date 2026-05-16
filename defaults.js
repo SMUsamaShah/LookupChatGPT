@@ -68,6 +68,11 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
 const DEFAULT_SELECTED_TEXT_PROMPT_TITLE   = "What's this?";
 
+const DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT = `Web page title: VAR_PAGE_TITLE
+Web page URL: VAR_PAGE_URL
+Text in focus from this web page:
+VAR_SELECTED_TEXT`;
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 // Shorthand for document.getElementById, used in popup and options scripts.
@@ -136,7 +141,7 @@ class Options {
   buttonPopupSelectedPrompt = ""; // remembers the last-used prompt in the extension button popup
 
   // Custom on-the-fly queries typed directly in the floating button dropdown
-  customQuerySystemPrompt = ""; // system prompt; empty = no system message (provider default behaviour)
+  customQuerySystemPrompt = DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
   customQueryOutputMode   = "auto"; // "auto" = replace if selection is editable, popup otherwise
 
   selectionButton = {

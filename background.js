@@ -74,7 +74,7 @@ function normalizeOptions(options) {
   options.selectionButton = options.selectionButton || { enabled: false, defaultPromptId: 0 };
   // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
   options.defaultPopupStyle       = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
-  options.customQuerySystemPrompt = options.customQuerySystemPrompt ?? "";
+  options.customQuerySystemPrompt = options.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
   options.customQueryOutputMode   = options.customQueryOutputMode   || "auto";
   return options;
 }
@@ -142,12 +142,11 @@ function handleCustomSelectionQuery(queryText, selectedText, pageTitle, pageURL,
     normalizeOptions(options);
     const prompt          = new StoredPrompt();
     prompt.title          = "Custom query";
-    prompt.content        = options.customQuerySystemPrompt || "";
-    prompt.userContent    = selectedText
-      ? `${queryText}\n\nSelected text:\n${selectedText}`
-      : queryText;
+    prompt.content        = options.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
+    prompt.userContent    = queryText;
     prompt.outputMode     = outputMode;
     prompt.followUpRounds = 1;
+    processPrompt(prompt, { selectedText, pageTitle, pageURL });
     const lookup = Object.assign(new Lookup(), { selectedText, tabId, promptId: "", prompt, options });
     sendRequestToAPI(lookup);
   }).catch((err) => console.error("lcgpt: custom query handler failed:", err));

@@ -15,9 +15,14 @@ chrome.runtime.onMessage.addListener((message) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-let _cachedOptions  = null;  // invalidated whenever storage changes
-let _loadingOptions = false; // prevents duplicate in-flight storage reads
-let _buttonPagePos  = null;  // page-coordinate anchor for the floating button
+let _cachedOptions        = null;  // invalidated whenever storage changes
+let _loadingOptions       = false; // prevents duplicate in-flight storage reads
+let _buttonPagePos        = null;  // page-coordinate anchor for the floating button
+let _capturedText         = "";    // selected text at the moment the button appeared
+let _capturedTitle        = "";
+let _capturedURL          = "";
+let _capturedEditable     = false; // whether the selection was inside an editable element
+let _suppressSelectionHide = false; // true while a mousedown inside the button is in flight
 
 function initFloatingButton() {
   // Inject hover/active styles for the floating button once per page.
@@ -35,14 +40,17 @@ function initFloatingButton() {
   }
 
   document.addEventListener("mousedown", (e) => {
-    if (e.target.closest("#lcgpt-float-btn")) return;
+    if (e.target.closest("#lcgpt-float-btn")) {
+      _suppressSelectionHide = true; // selectionchange fires before focus settles
+      return;
+    }
     hideFloatingButton();
   });
 
   document.addEventListener("mouseup", onSelectionMouseUp);
 
   document.addEventListener("selectionchange", () => {
-    if (document.activeElement?.closest("#lcgpt-float-btn")) return;
+    if (_suppressSelectionHide) return;
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
 
@@ -51,6 +59,7 @@ function initFloatingButton() {
 }
 
 function onSelectionMouseUp(e) {
+  _suppressSelectionHide = false;
   if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
 
   const sel  = window.getSelection();
@@ -182,6 +191,13 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     if (menu.style.display === "none") openMenu(); else menu.style.display = "none";
   };
 
+  // Capture selection context now — focus shifts when the button is clicked,
+  // which clears window.getSelection() for contenteditable elements.
+  _capturedText     = sel.toString();
+  _capturedTitle    = document.title;
+  _capturedURL      = location.href;
+  _capturedEditable = isEditableElement(document.activeElement);
+
   // Store the page-coordinate anchor (above the selection) so the button can
   // follow the text when the page is scrolled.
   const rect = sel.getRangeAt(0).getBoundingClientRect();
@@ -211,13 +227,20 @@ function hideFloatingButton() {
   _buttonPagePos = null;
 }
 
+function isEditableElement(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName.toLowerCase();
+  return tag === "textarea" || (tag === "input" && /^(text|search|url|email|tel)$/.test(el.type || "text"));
+}
+
 function runFloatingPrompt(promptId) {
   chrome.runtime.sendMessage({
     action:       "selection_button_click",
     promptId:     String(promptId),
-    selectedText: window.getSelection().toString(),
-    pageTitle:    document.title,
-    pageURL:      location.href,
+    selectedText: _capturedText,
+    pageTitle:    _capturedTitle,
+    pageURL:      _capturedURL,
   });
 }
 
@@ -225,9 +248,9 @@ function runCustomQuery(queryText) {
   chrome.runtime.sendMessage({
     action:       "custom_selection_query",
     queryText,
-    selectedText: window.getSelection().toString(),
-    pageTitle:    document.title,
-    pageURL:      location.href,
+    selectedText: _capturedText,
+    pageTitle:    _capturedTitle,
+    pageURL:      _capturedURL,
     outputMode:   resolveCustomOutputMode(),
   });
 }
@@ -235,11 +258,7 @@ function runCustomQuery(queryText) {
 function resolveCustomOutputMode() {
   const setting = _cachedOptions?.customQueryOutputMode || "auto";
   if (setting !== "auto") return setting;
-  const el  = document.activeElement;
-  if (!el) return "popup";
-  if (el.isContentEditable) return "replace";
-  const tag = el.tagName.toLowerCase();
-  return (tag === "textarea" || (tag === "input" && /^(text|search|url|email|tel)$/.test(el.type || "text")))
+  return _capturedEditable
     ? "replace" : "popup";
 }
 

@@ -77,7 +77,9 @@ function migrateOptions(opts) {
   }
   opts.selectionButton = opts.selectionButton || { enabled: false, defaultPromptId: 0 };
   // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
-  opts.defaultPopupStyle = migrateCSSClassNames(opts.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
+  opts.defaultPopupStyle      = migrateCSSClassNames(opts.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
+  opts.customQuerySystemPrompt = opts.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
+  opts.customQueryOutputMode   = opts.customQueryOutputMode   || "auto";
   return opts;
 }
 
