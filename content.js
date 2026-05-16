@@ -152,22 +152,25 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
     searchInput.addEventListener("input", () => { renderList(searchInput.value); setHighlight(null); });
 
-    searchInput.addEventListener("keydown", (e) => {
+    function handleMenuKey(e) {
+      if (menu.style.display === "none") { document.removeEventListener("keydown", handleMenuKey, true); return; }
+
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
       const idx   = hi ? items.indexOf(hi) : -1;
 
       if (e.key === "Escape") {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         menu.style.display = "none";
+        document.removeEventListener("keydown", handleMenuKey, true);
       } else if (e.key === "ArrowDown") {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (items.length) setHighlight(items[Math.min(idx + 1, items.length - 1)]);
       } else if (e.key === "ArrowUp") {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (idx <= 0) setHighlight(null); else setHighlight(items[idx - 1]);
       } else if (e.key === "Enter") {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         if (hi) {
           hideFloatingButton();
           runFloatingPrompt(parseInt(hi.dataset.id));
@@ -175,8 +178,29 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
           const query = searchInput.value.trim();
           if (query) { hideFloatingButton(); runCustomQuery(query); }
         }
+        document.removeEventListener("keydown", handleMenuKey, true);
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Printable character — funnel into search input and focus it.
+        // Selection is already captured in _capturedText so losing it here is fine.
+        if (document.activeElement !== searchInput) {
+          searchInput.value += e.key;
+          searchInput.focus();
+          renderList(searchInput.value);
+          setHighlight(null);
+          e.preventDefault(); e.stopPropagation();
+        }
+        // If already focused, let the browser's default input handling run.
+      } else if (e.key === "Backspace") {
+        if (document.activeElement !== searchInput) {
+          searchInput.value = searchInput.value.slice(0, -1);
+          renderList(searchInput.value);
+          setHighlight(null);
+          e.preventDefault(); e.stopPropagation();
+        }
       }
-    });
+    }
+
+    document.addEventListener("keydown", handleMenuKey, true);
 
     renderList("");
     menu.style.display = "block";
