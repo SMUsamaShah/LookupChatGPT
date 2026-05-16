@@ -184,23 +184,15 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
           if (query) { hideFloatingButton(); runCustomQuery(query); }
         }
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // Printable character — funnel into search input and focus it.
-        // Selection is already captured in _capturedText so losing it here is fine.
-        if (document.activeElement !== searchInput) {
-          searchInput.value += e.key;
-          searchInput.focus();
-          renderList(searchInput.value);
-          setHighlight(null);
-          e.preventDefault(); e.stopPropagation();
-        }
-        // If already focused, let the browser's default input handling run.
+        searchInput.value += e.key;
+        renderList(searchInput.value);
+        setHighlight(null);
+        e.preventDefault(); e.stopPropagation();
       } else if (e.key === "Backspace") {
-        if (document.activeElement !== searchInput) {
-          searchInput.value = searchInput.value.slice(0, -1);
-          renderList(searchInput.value);
-          setHighlight(null);
-          e.preventDefault(); e.stopPropagation();
-        }
+        searchInput.value = searchInput.value.slice(0, -1);
+        renderList(searchInput.value);
+        setHighlight(null);
+        e.preventDefault(); e.stopPropagation();
       }
     }
 
