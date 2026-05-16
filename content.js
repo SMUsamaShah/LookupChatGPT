@@ -180,7 +180,6 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
     renderList("");
     menu.style.display = "block";
-    searchInput.focus();
   }
 
   btn.querySelector("#lcgpt-float-main").onclick = () => {
