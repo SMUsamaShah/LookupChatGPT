@@ -23,6 +23,7 @@ let _capturedTitle        = "";
 let _capturedURL          = "";
 let _capturedEditable     = false; // whether the selection was inside an editable element
 let _suppressSelectionHide = false; // true while a mousedown inside the button is in flight
+let _menuOpen             = false;  // true while the floating-button dropdown is open
 
 function initFloatingButton() {
   // Inject hover/active styles for the floating button once per page.
@@ -52,6 +53,7 @@ function initFloatingButton() {
 
   document.addEventListener("selectionchange", () => {
     if (_suppressSelectionHide) return;
+    if (_menuOpen) return;
     if (document.activeElement?.closest("#lcgpt-float-btn")) return;
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
@@ -119,6 +121,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   const menu = btn.querySelector("#lcgpt-float-menu");
 
   function openMenu() {
+    _menuOpen = true;
     menu.innerHTML = `
       <div style="padding:4px;border-bottom:1px solid #eee">
         <input id="lcgpt-float-search" type="text" autocomplete="off"
@@ -153,7 +156,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     searchInput.addEventListener("input", () => { renderList(searchInput.value); setHighlight(null); });
 
     function handleMenuKey(e) {
-      if (menu.style.display === "none") { document.removeEventListener("keydown", handleMenuKey, true); return; }
+      if (menu.style.display === "none") { _menuOpen = false; document.removeEventListener("keydown", handleMenuKey, true); return; }
 
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
@@ -161,6 +164,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
       if (e.key === "Escape") {
         e.preventDefault(); e.stopPropagation();
+        _menuOpen = false;
         menu.style.display = "none";
         document.removeEventListener("keydown", handleMenuKey, true);
       } else if (e.key === "ArrowDown") {
@@ -171,6 +175,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         if (idx <= 0) setHighlight(null); else setHighlight(items[idx - 1]);
       } else if (e.key === "Enter") {
         e.preventDefault(); e.stopPropagation();
+        document.removeEventListener("keydown", handleMenuKey, true);
         if (hi) {
           hideFloatingButton();
           runFloatingPrompt(parseInt(hi.dataset.id));
@@ -178,7 +183,6 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
           const query = searchInput.value.trim();
           if (query) { hideFloatingButton(); runCustomQuery(query); }
         }
-        document.removeEventListener("keydown", handleMenuKey, true);
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         // Printable character — funnel into search input and focus it.
         // Selection is already captured in _capturedText so losing it here is fine.
@@ -247,6 +251,7 @@ function updateFloatingButtonPosition() {
 }
 
 function hideFloatingButton() {
+  _menuOpen = false;
   const btn = document.getElementById("lcgpt-float-btn");
   if (btn) btn.style.display = "none";
   _buttonPagePos = null;
