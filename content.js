@@ -42,6 +42,7 @@ function initFloatingButton() {
   document.addEventListener("mouseup", onSelectionMouseUp);
 
   document.addEventListener("selectionchange", () => {
+    if (document.activeElement?.closest("#lcgpt-float-btn")) return;
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
 
