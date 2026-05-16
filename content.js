@@ -51,6 +51,7 @@ function initFloatingButton() {
 
   document.addEventListener("selectionchange", () => {
     if (_suppressSelectionHide) return;
+    if (document.activeElement?.closest("#lcgpt-float-btn")) return;
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
   });
 
