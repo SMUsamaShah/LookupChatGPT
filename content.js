@@ -41,7 +41,8 @@ function initFloatingButton() {
 
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) {
-      _suppressSelectionHide = true; // selectionchange fires before focus settles
+      e.preventDefault(); // keeps text selection intact; click events still fire
+      _suppressSelectionHide = true;
       return;
     }
     hideFloatingButton();
