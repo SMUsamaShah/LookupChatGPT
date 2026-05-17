@@ -42,7 +42,13 @@ function initFloatingButton() {
 
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) {
-      e.preventDefault(); // keeps text selection intact; click events still fire
+      // e.preventDefault() stops the browser from moving focus away from whatever
+      // currently has it. This has two effects:
+      //   1. A document text selection stays highlighted (browser only dims it on focus loss).
+      //   2. A textarea/input that the user selected text in keeps focus, so its selection
+      //      highlight also stays visible while they interact with the floating button.
+      // Click events still fire normally despite preventDefault on mousedown.
+      e.preventDefault();
       _suppressSelectionHide = true;
       return;
     }
@@ -53,6 +59,9 @@ function initFloatingButton() {
 
   document.addEventListener("selectionchange", () => {
     if (_suppressSelectionHide) return;
+    // While the dropdown is open the user is typing into the search input. That
+    // typing can clear the document selection, but we must not hide the button —
+    // the captured text (_capturedText) is already saved and is still valid.
     if (_menuOpen) return;
     if (document.activeElement?.closest("#lcgpt-float-btn")) return;
     if (!window.getSelection()?.toString().trim()) hideFloatingButton();
@@ -122,6 +131,11 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   function openMenu() {
     _menuOpen = true;
+    // The search input intentionally never receives browser focus (no .focus() call,
+    // and mousedown on the button is already e.preventDefault()'d). All keyboard
+    // input is intercepted by a capture-phase document listener (handleMenuKey).
+    // This preserves whatever text selection was active when the button appeared —
+    // both a normal document selection and a selection inside a focused textarea.
     menu.innerHTML = `
       <div style="padding:4px;border-bottom:1px solid #eee">
         <input id="lcgpt-float-search" type="text" autocomplete="off"
@@ -156,7 +170,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     searchInput.addEventListener("input", () => { renderList(searchInput.value); setHighlight(null); });
 
     function handleMenuKey(e) {
-      if (menu.style.display === "none") { _menuOpen = false; document.removeEventListener("keydown", handleMenuKey, true); return; }
+      // Clean up if the menu was closed externally (e.g. hideFloatingButton() was called
+      // by a click outside). hideFloatingButton() hides the button container but does not
+      // set menu.style.display, so we check _menuOpen as the authoritative signal.
+      if (!_menuOpen || menu.style.display === "none") { _menuOpen = false; document.removeEventListener("keydown", handleMenuKey, true); return; }
 
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
@@ -184,6 +201,8 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
           if (query) { hideFloatingButton(); runCustomQuery(query); }
         }
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Append directly to the input's value without focusing it — focusing would
+        // clear the document/textarea selection the user had before opening the menu.
         searchInput.value += e.key;
         renderList(searchInput.value);
         setHighlight(null);
