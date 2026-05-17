@@ -56,6 +56,7 @@ function initFloatingButton() {
   });
 
   document.addEventListener("mouseup", onSelectionMouseUp);
+  document.addEventListener("keyup",   onSelectionKeyUp);
 
   document.addEventListener("selectionchange", () => {
     if (_suppressSelectionHide) return;
@@ -79,6 +80,25 @@ function onSelectionMouseUp(e) {
   const text = sel?.toString().trim();
   if (!text) { hideFloatingButton(); return; }
 
+  if (_cachedOptions !== null) {
+    maybeShowFloatingButton(sel, _cachedOptions);
+    return;
+  }
+  if (_loadingOptions) return;
+  _loadingOptions = true;
+  chrome.storage.local.get(null).then((opts) => {
+    _cachedOptions  = opts;
+    _loadingOptions = false;
+    maybeShowFloatingButton(sel, opts);
+  });
+}
+
+function onSelectionKeyUp(e) {
+  if (_menuOpen) return;
+  if (e.target.closest?.("#lcgpt-float-btn, #lcgpt-result-container")) return;
+  const sel  = window.getSelection();
+  const text = sel?.toString().trim();
+  if (!text) return; // selectionchange already handles hiding
   if (_cachedOptions !== null) {
     maybeShowFloatingButton(sel, _cachedOptions);
     return;
@@ -240,7 +260,14 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   // Store the page-coordinate anchor (above the selection) so the button can
   // follow the text when the page is scrolled.
-  const rect = sel.getRangeAt(0).getBoundingClientRect();
+  // For selections inside form controls (textarea, input) the Range's bounding
+  // rect is zero — browsers don't expose text-node positions inside form controls.
+  // Fall back to the element's own bounding rect so the button appears above
+  // the control rather than at the top-left corner of the page.
+  let rect = sel.getRangeAt(0).getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    rect = document.activeElement?.getBoundingClientRect() || rect;
+  }
   _buttonPagePos = {
     x: Math.round(rect.left + window.scrollX),
     y: Math.round(rect.top  + window.scrollY) - 36,
