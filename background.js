@@ -29,12 +29,24 @@ const PROMPT_ID_PREFIX = "custom-prompt";
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     const settings = new Options();
-    const prompt   = new StoredPrompt();
-    prompt.title       = DEFAULT_SELECTED_TEXT_PROMPT_TITLE;
-    prompt.content     = DEFAULT_SELECTED_TEXT_PROMPT_CONTENT;
-    prompt.userContent = "VAR_SELECTED_TEXT";
+
+    const whatIsThis       = new StoredPrompt();
+    whatIsThis.title       = DEFAULT_SELECTED_TEXT_PROMPT_TITLE;
+    whatIsThis.content     = DEFAULT_SELECTED_TEXT_PROMPT_CONTENT;
+    whatIsThis.userContent = "VAR_SELECTED_TEXT";
+    settings.promptData.push(whatIsThis);
+
+    const summarize            = new StoredPrompt();
+    summarize.title            = "Summarize";
+    summarize.context          = "page";
+    summarize.content          = "Summarize the following web page concisely.";
+    summarize.userContent      = "VAR_PAGE_URL";
+    summarize.providerOverride = "openrouter";
+    summarize.modelOverride    = "perplexity/sonar";
+    summarize.followUpRounds   = 0;
+    settings.promptData.push(summarize);
+
     settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
-    settings.promptData.push(prompt);
     chrome.storage.local.set(settings);
   }
 });
