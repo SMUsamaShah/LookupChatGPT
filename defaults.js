@@ -8,41 +8,48 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   left: 10px;
   z-index: 999999;
   max-width: 60vw;
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #000;
   box-sizing: border-box;
 }
 .lcgpt-result-panel {
-  color: #000;
+  /* all:initial cuts every inherited property from the host page.
+     Font, color and box properties are then re-declared explicitly below
+     so child elements inherit clean values from us, not from the page. */
+  all: initial;
+  display: block;
   position: relative;
+  box-sizing: border-box;
   padding: 10px 20px 10px 10px;
-  background-color: #fff;
-  border: 1px solid #000;
   margin-bottom: 6px;
   max-height: 45vh;
   overflow-y: auto;
   resize: both;
+  background: #fff;
+  border: 1px solid #000;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #000;
 }
 .lcgpt-result-panel .lcgpt-button-container {
+  /* all:unset — non-inherited props → initial, inherited → inherit from panel */
+  all: unset;
+  display: flex;
   position: absolute;
   top: 0;
   right: 0;
-  display: flex;
 }
 .lcgpt-result-panel .lcgpt-btn-dismiss,
 .lcgpt-result-panel .lcgpt-btn-regen {
+  all: unset;
   display: inline-block;
   padding: 2px 5px;
   cursor: pointer;
-  background: none;
-  border: none;
   font-size: 12px;
   line-height: 1;
   color: #555;
 }
 .lcgpt-result-panel .lcgpt-title {
+  all: unset;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -52,14 +59,19 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   margin-bottom: 6px;
 }
 .lcgpt-result-panel .lcgpt-message {
+  all: unset;
+  display: block;
   white-space: pre-wrap;
 }
 .lcgpt-result-panel .lcgpt-question {
-  border: 1px solid #ccc;
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 1.4em;
   margin-top: 6px;
   padding: 2px 4px;
-  width: 100%;
+  border: 1px solid #ccc;
   outline: none;
   background: #fff;
   color: #000;
