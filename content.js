@@ -26,19 +26,8 @@ let _suppressSelectionHide = false; // true while a mousedown inside the button 
 let _menuOpen             = false;  // true while the floating-button dropdown is open
 
 function initFloatingButton() {
-  // Inject hover/active styles for the floating button once per page.
-  // Inline styles can't express :hover/:active, so a <style> tag is the only option.
-  if (!document.getElementById("lcgpt-float-style")) {
-    const s = document.createElement("style");
-    s.id = "lcgpt-float-style";
-    s.textContent = `
-      #lcgpt-float-btn button:hover       { background: #f0f0f0 !important; }
-      #lcgpt-float-btn button:active      { background: #ddd    !important; }
-      .lcgpt-menu-item:hover,
-      .lcgpt-menu-item--active            { background: #e8f0fe !important; }
-    `;
-    document.head.appendChild(s);
-  }
+  // Hover/active styles for the floating button are injected into its own
+  // shadow root in showFloatingButton — no document.head injection needed.
 
   document.addEventListener("mousedown", (e) => {
     if (e.target.closest("#lcgpt-float-btn")) {
@@ -126,28 +115,49 @@ function maybeShowFloatingButton(sel, opts) {
 
 function showFloatingButton(sel, prompts, defaultPrompt) {
   let btn = document.getElementById("lcgpt-float-btn");
+  let shadow;
   if (!btn) {
     btn = document.createElement("div");
     btn.id = "lcgpt-float-btn";
-    btn.style.cssText = [
-      "position:fixed", "z-index:999998", "display:flex", "align-items:stretch",
-      "background:white", "border:1px solid #ccc", "border-radius:4px",
-      "box-shadow:0 2px 8px rgba(0,0,0,0.18)", "font-family:Arial,sans-serif",
-      "font-size:12px", "cursor:default", "user-select:none", "color:#000",
-    ].join(";");
+    // Only layout/visibility properties live on the host; visual styles go in
+    // the shadow so page CSS (including !important) cannot reach them.
+    btn.style.cssText = "position:fixed;z-index:999998;display:none";
     document.body.appendChild(btn);
+    shadow = btn.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = `
+      #lcgpt-float-wrap {
+        display: flex; align-items: stretch;
+        background: white; border: 1px solid #ccc; border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        font-family: Arial, sans-serif; font-size: 12px;
+        cursor: default; user-select: none; color: #000;
+      }
+      button:hover  { background: #f0f0f0; }
+      button:active { background: #ddd; }
+      .lcgpt-menu-item:hover,
+      .lcgpt-menu-item--active { background: #e8f0fe; }
+    `;
+    shadow.appendChild(style);
+    const wrap = document.createElement("div");
+    wrap.id = "lcgpt-float-wrap";
+    shadow.appendChild(wrap);
+  } else {
+    shadow = btn.shadowRoot;
   }
+
+  const wrap = shadow.getElementById("lcgpt-float-wrap");
 
   const esc        = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
 
-  btn.innerHTML = `
+  wrap.innerHTML = `
     <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit;color:inherit">${mainLabel}</button>
     <button id="lcgpt-float-arrow" style="border:none;border-left:1px solid #ccc;background:none;padding:4px 6px;cursor:pointer;font-size:11px;color:inherit" title="Choose prompt">▾</button>
     <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;min-width:220px;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:1"></div>
   `;
 
-  const menu = btn.querySelector("#lcgpt-float-menu");
+  const menu = wrap.querySelector("#lcgpt-float-menu");
 
   function openMenu() {
     _menuOpen = true;
@@ -241,12 +251,12 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     menu.style.display = "block";
   }
 
-  btn.querySelector("#lcgpt-float-main").onclick = () => {
+  wrap.querySelector("#lcgpt-float-main").onclick = () => {
     if (defaultPrompt) { hideFloatingButton(); runFloatingPrompt(defaultPrompt.id); }
     else openMenu();
   };
 
-  btn.querySelector("#lcgpt-float-arrow").onclick = (e) => {
+  wrap.querySelector("#lcgpt-float-arrow").onclick = (e) => {
     e.stopPropagation();
     if (menu.style.display === "none") openMenu(); else menu.style.display = "none";
   };
@@ -272,7 +282,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     x: Math.round(rect.left + window.scrollX),
     y: Math.round(rect.top  + window.scrollY) - 36,
   };
-  btn.style.display = "flex";
+  btn.style.display = "block";
   updateFloatingButtonPosition();
 }
 
