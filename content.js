@@ -340,19 +340,24 @@ function displayResult(lookup) {
     return;
   }
 
-  // Inject shared result panel CSS once per page
-  if (!document.getElementById("lcgpt-result-style")) {
-    const style  = document.createElement("style");
-    style.id     = "lcgpt-result-style";
-    style.innerHTML = lookup.options.defaultPopupStyle;
-    document.head.appendChild(style);
-  }
-
-  let container = document.getElementById("lcgpt-result-container");
-  if (!container) {
-    container    = document.createElement("div");
-    container.id = "lcgpt-result-container";
-    document.body.appendChild(container);
+  // Get or create the shadow host. The shadow root completely isolates the
+  // panel from host-page CSS — including rules with !important — so no
+  // all:initial / all:unset tricks are needed inside the panel styles.
+  let host = document.getElementById("lcgpt-result-container");
+  let shadow;
+  if (!host) {
+    host    = document.createElement("div");
+    host.id = "lcgpt-result-container";
+    document.body.appendChild(host);
+    shadow  = host.attachShadow({ mode: "open" });
+    const style       = document.createElement("style");
+    // Silently migrate stored CSS that still uses #lcgpt-result-container
+    // instead of the shadow-DOM :host selector.
+    style.textContent = lookup.options.defaultPopupStyle
+      .replace(/#lcgpt-result-container\b/g, ":host");
+    shadow.appendChild(style);
+  } else {
+    shadow = host.shadowRoot;
   }
 
   // followUpRounds = 0 means one-shot: hide the follow-up input box entirely
@@ -372,7 +377,7 @@ function displayResult(lookup) {
       </div>
     </div>
   `;
-  container.appendChild(dialog);
+  shadow.appendChild(dialog);
 
   // Dismiss
   dialog.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => dialog.remove());

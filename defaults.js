@@ -1,55 +1,47 @@
 // ── Visual defaults ───────────────────────────────────────────────────────────
 
-const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
-  all: initial;
+const DEFAULT_POPUP_STYLE = `:host {
   display: block;
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 999999;
   max-width: 60vw;
-  box-sizing: border-box;
-}
-.lcgpt-result-panel {
-  /* all:initial cuts every inherited property from the host page.
-     Font, color and box properties are then re-declared explicitly below
-     so child elements inherit clean values from us, not from the page. */
-  all: initial;
-  display: block;
-  position: relative;
-  box-sizing: border-box;
-  padding: 10px 20px 10px 10px;
-  margin-bottom: 6px;
-  max-height: 45vh;
-  overflow-y: auto;
-  resize: both;
-  background: #fff;
-  border: 1px solid #000;
   font-family: Arial, sans-serif;
   font-size: 14px;
   line-height: 1.4;
   color: #000;
+  box-sizing: border-box;
+}
+.lcgpt-result-panel {
+  position: relative;
+  padding: 10px 20px 10px 10px;
+  background-color: #fff;
+  border: 1px solid #000;
+  margin-bottom: 6px;
+  max-height: 45vh;
+  overflow-y: auto;
+  resize: both;
+  box-sizing: border-box;
 }
 .lcgpt-result-panel .lcgpt-button-container {
-  /* all:unset — non-inherited props → initial, inherited → inherit from panel */
-  all: unset;
-  display: flex;
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
 }
 .lcgpt-result-panel .lcgpt-btn-dismiss,
 .lcgpt-result-panel .lcgpt-btn-regen {
-  all: unset;
   display: inline-block;
   padding: 2px 5px;
   cursor: pointer;
+  background: none;
+  border: none;
   font-size: 12px;
   line-height: 1;
   color: #555;
 }
 .lcgpt-result-panel .lcgpt-title {
-  all: unset;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -59,12 +51,9 @@ const DEFAULT_POPUP_STYLE = `#lcgpt-result-container {
   margin-bottom: 6px;
 }
 .lcgpt-result-panel .lcgpt-message {
-  all: unset;
-  display: block;
   white-space: pre-wrap;
 }
 .lcgpt-result-panel .lcgpt-question {
-  all: unset;
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -96,19 +85,23 @@ $ = (id) => document.getElementById(id);
 // lcgpt-* selector names. Called by normalizeOptions() in both background.js
 // and options.js so the migration happens at every load path.
 function migrateCSSClassNames(css) {
-  if (!css || !css.includes("lookupchatgpt")) return css;
-  return css
-    // Oldest names: lookupchatgpt-popup-* (before the "result-dialog" rename)
-    .replace(/#lookupchatgpt-popup-container\b/g,         "#lcgpt-result-container")
-    .replace(/\.lookupchatgpt-popup\b/g,                  ".lcgpt-result-panel")
-    // Intermediate names: lookupchatgpt-result-dialog-*
-    .replace(/#lookupchatgpt-result-dialog-container\b/g, "#lcgpt-result-container")
-    .replace(/\.lookupchatgpt-result-dialog\b/g,          ".lcgpt-result-panel")
-    // Sub-class names (may appear with any of the above outer classes)
-    .replace(/\.lookupchatgpt-title\b/g,                  ".lcgpt-title")
-    .replace(/\.lookupchatgpt-message\b/g,                ".lcgpt-message")
-    .replace(/\.lookupchatgpt-question\b/g,               ".lcgpt-question")
-    .replace(/\.lookupchatgpt-button-container\b/g,       ".lcgpt-button-container");
+  if (!css) return css;
+  if (css.includes("lookupchatgpt")) {
+    css = css
+      // Oldest names: lookupchatgpt-popup-* (before the "result-dialog" rename)
+      .replace(/#lookupchatgpt-popup-container\b/g,         "#lcgpt-result-container")
+      .replace(/\.lookupchatgpt-popup\b/g,                  ".lcgpt-result-panel")
+      // Intermediate names: lookupchatgpt-result-dialog-*
+      .replace(/#lookupchatgpt-result-dialog-container\b/g, "#lcgpt-result-container")
+      .replace(/\.lookupchatgpt-result-dialog\b/g,          ".lcgpt-result-panel")
+      // Sub-class names
+      .replace(/\.lookupchatgpt-title\b/g,                  ".lcgpt-title")
+      .replace(/\.lookupchatgpt-message\b/g,                ".lcgpt-message")
+      .replace(/\.lookupchatgpt-question\b/g,               ".lcgpt-question")
+      .replace(/\.lookupchatgpt-button-container\b/g,       ".lcgpt-button-container");
+  }
+  // Migrate from regular DOM selector to shadow DOM :host selector
+  return css.replace(/#lcgpt-result-container\b/g, ":host");
 }
 
 // ── Data classes ──────────────────────────────────────────────────────────────
