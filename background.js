@@ -30,21 +30,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     const settings = new Options();
 
-    const whatIsThis       = new StoredPrompt();
-    whatIsThis.title       = DEFAULT_SELECTED_TEXT_PROMPT_TITLE;
-    whatIsThis.content     = DEFAULT_SELECTED_TEXT_PROMPT_CONTENT;
-    whatIsThis.userContent = "VAR_SELECTED_TEXT";
-    settings.promptData.push(whatIsThis);
-
-    const summarize            = new StoredPrompt();
-    summarize.title            = "Summarize";
-    summarize.context          = "page";
-    summarize.content          = "Summarize the following web page concisely.";
-    summarize.userContent      = "VAR_PAGE_URL";
-    summarize.providerOverride = "openrouter";
-    summarize.modelOverride    = "perplexity/sonar";
-    summarize.followUpRounds   = 0;
-    settings.promptData.push(summarize);
+    makeDefaultPrompts().forEach(p => settings.promptData.push(p));
 
     settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
     chrome.storage.local.set(settings);

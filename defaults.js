@@ -120,6 +120,24 @@ function normalizePrompt(prompt) {
   return prompt;
 }
 
+function makeDefaultPrompts() {
+  const whatIsThis       = new StoredPrompt();
+  whatIsThis.title       = DEFAULT_SELECTED_TEXT_PROMPT_TITLE;
+  whatIsThis.content     = DEFAULT_SELECTED_TEXT_PROMPT_CONTENT;
+  whatIsThis.userContent = "VAR_SELECTED_TEXT";
+
+  const summarize            = new StoredPrompt();
+  summarize.title            = "Summarize";
+  summarize.context          = "page";
+  summarize.content          = "Summarize the following web page concisely.";
+  summarize.userContent      = "VAR_PAGE_URL";
+  summarize.providerOverride = "openrouter";
+  summarize.modelOverride    = "perplexity/sonar";
+  summarize.followUpRounds   = 0;
+
+  return [whatIsThis, summarize];
+}
+
 // ── Data classes ──────────────────────────────────────────────────────────────
 
 class StoredPrompt {

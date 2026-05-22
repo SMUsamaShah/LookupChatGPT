@@ -6,12 +6,14 @@ chrome.storage.local.get(null).then(loadOptions);
 let showAdvanced = false;
 
 document.addEventListener("click", (e) => {
-  if      (e.target.matches(".deleteButton"))        e.target.closest("tr").remove();
-  else if (e.target.matches(".moveUpButton"))        moveRow(e.target, "up");
-  else if (e.target.matches(".moveDownButton"))      moveRow(e.target, "down");
+  if      (e.target.matches(".deleteButton"))          e.target.closest("tr").remove();
+  else if (e.target.matches(".moveUpButton"))          moveRow(e.target, "up");
+  else if (e.target.matches(".moveDownButton"))        moveRow(e.target, "down");
   else if (e.target.matches("#toggleAdvancedColumns")) toggleAdvancedColumns();
-  else if (e.target.matches("#addNewPrompt"))        appendPromptRow(new StoredPrompt());
-  else if (e.target.matches("#savePrompts"))         saveOptions();
+  else if (e.target.matches("#addNewPrompt"))          appendPromptRow(new StoredPrompt());
+  else if (e.target.matches("#resetPrompts"))          resetPrompts();
+  else if (e.target.matches("#resetCSS"))              resetCSS();
+  else if (e.target.matches("#savePrompts"))           saveOptions();
 });
 
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -41,23 +43,34 @@ function loadOptions(raw) {
   $("customQuerySystemPrompt").value     = opts.customQuerySystemPrompt || "";
 
   // Prompts — build both the table rows and the floating-button default dropdown
-  if (opts.promptData) {
-    const selBtnSelect = $("selectionButtonPrompt");
-    selBtnSelect.innerHTML = "";
-    opts.promptData.forEach((prompt, i) => {
-      appendPromptRow(normalizePrompt(prompt));
-      // Populate the floating-button default dropdown with enabled selection prompts
-      if (prompt.enabled && prompt.context === "selection") {
-        const opt   = document.createElement("option");
-        opt.value   = i;
-        opt.text    = prompt.title;
-        opt.selected = i === (selBtn.defaultPromptId ?? 0);
-        selBtnSelect.appendChild(opt);
-      }
-    });
-  }
+  if (opts.promptData) populatePromptTable(opts.promptData.map(normalizePrompt), selBtn.defaultPromptId ?? 0);
 
   toggleAdvancedColumns(); // apply initial visibility
+}
+
+function populatePromptTable(prompts, defaultPromptId = 0) {
+  document.querySelector("#promptTable tbody").innerHTML = "";
+  const selBtnSelect = $("selectionButtonPrompt");
+  selBtnSelect.innerHTML = "";
+  prompts.forEach((p, i) => {
+    appendPromptRow(p);
+    if (p.enabled && (!p.context || p.context === "selection")) {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.text  = p.title;
+      opt.selected = (i === defaultPromptId);
+      selBtnSelect.appendChild(opt);
+    }
+  });
+}
+
+function resetPrompts() {
+  if (!confirm("Reset all prompts to the extension defaults?\n\nClick Save to make it permanent.")) return;
+  populatePromptTable(makeDefaultPrompts());
+}
+
+function resetCSS() {
+  $("defaultPopupStyle").value = DEFAULT_POPUP_STYLE;
 }
 
 // ── Migration ─────────────────────────────────────────────────────────────────
