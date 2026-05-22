@@ -24,14 +24,14 @@ const DEFAULT_POPUP_STYLE = `:host {
   resize: both;
   box-sizing: border-box;
 }
-.lcgpt-result-panel .lcgpt-button-container {
+.lcgpt-button-container {
   position: absolute;
   top: 0;
   right: 0;
   display: flex;
 }
-.lcgpt-result-panel .lcgpt-btn-dismiss,
-.lcgpt-result-panel .lcgpt-btn-regen {
+.lcgpt-btn-dismiss,
+.lcgpt-btn-regen {
   display: inline-block;
   padding: 2px 5px;
   cursor: pointer;
@@ -41,7 +41,7 @@ const DEFAULT_POPUP_STYLE = `:host {
   line-height: 1;
   color: #555;
 }
-.lcgpt-result-panel .lcgpt-title {
+.lcgpt-title {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -50,10 +50,10 @@ const DEFAULT_POPUP_STYLE = `:host {
   font-weight: bold;
   margin-bottom: 6px;
 }
-.lcgpt-result-panel .lcgpt-message {
+.lcgpt-message {
   white-space: pre-wrap;
 }
-.lcgpt-result-panel .lcgpt-question {
+.lcgpt-question {
   display: block;
   box-sizing: border-box;
   width: 100%;

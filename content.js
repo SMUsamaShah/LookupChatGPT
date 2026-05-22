@@ -133,6 +133,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         font-family: Arial, sans-serif; font-size: 12px;
         cursor: default; user-select: none; color: #000;
       }
+      button {
+        border: none; background: none; cursor: pointer;
+        font-family: inherit; color: inherit;
+      }
       button:hover  { background: #f0f0f0; }
       button:active { background: #ddd; }
       .lcgpt-menu-item:hover,
@@ -152,8 +156,8 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
 
   wrap.innerHTML = `
-    <button id="lcgpt-float-main"  style="border:none;background:none;padding:4px 8px;cursor:pointer;font-size:12px;font-family:inherit;color:inherit">${mainLabel}</button>
-    <button id="lcgpt-float-arrow" style="border:none;border-left:1px solid #ccc;background:none;padding:4px 6px;cursor:pointer;font-size:11px;color:inherit" title="Choose prompt">▾</button>
+    <button id="lcgpt-float-main"  style="padding:4px 8px;font-size:12px">${mainLabel}</button>
+    <button id="lcgpt-float-arrow" style="border-left:1px solid #ccc;padding:4px 6px;font-size:11px" title="Choose prompt">▾</button>
     <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;min-width:220px;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:1"></div>
   `;
 
