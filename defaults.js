@@ -104,6 +104,22 @@ function migrateCSSClassNames(css) {
   return css.replace(/#lcgpt-result-container\b/g, ":host");
 }
 
+// Normalises a StoredPrompt loaded from storage, handling fields added or renamed
+// in past versions. Called by both background.js and options.js at every load path.
+function normalizePrompt(prompt) {
+  if (!prompt) return new StoredPrompt();
+  // Old format used a boolean `replaceText`; map it to the string outputMode
+  if (prompt.replaceText === true && !prompt.outputMode) prompt.outputMode = "replace";
+  // Old format used `promptSettings` for raw API JSON; treat it as extraParams
+  if (prompt.promptSettings && !prompt.extraParams) prompt.extraParams = prompt.promptSettings;
+  prompt.outputMode     = prompt.outputMode     || "popup";
+  prompt.followUpRounds = prompt.followUpRounds ?? 1;
+  prompt.context        = prompt.context        || "selection";
+  prompt.content        = prompt.content        ?? "";
+  prompt.userContent    = prompt.userContent    ?? "";
+  return prompt;
+}
+
 // ── Data classes ──────────────────────────────────────────────────────────────
 
 class StoredPrompt {

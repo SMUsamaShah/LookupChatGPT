@@ -45,7 +45,7 @@ function loadOptions(raw) {
     const selBtnSelect = $("selectionButtonPrompt");
     selBtnSelect.innerHTML = "";
     opts.promptData.forEach((prompt, i) => {
-      appendPromptRow(migratePrompt(prompt));
+      appendPromptRow(normalizePrompt(prompt));
       // Populate the floating-button default dropdown with enabled selection prompts
       if (prompt.enabled && prompt.context === "selection") {
         const opt   = document.createElement("option");
@@ -81,20 +81,6 @@ function migrateOptions(opts) {
   opts.customQuerySystemPrompt = opts.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
   opts.customQueryOutputMode   = opts.customQueryOutputMode   || "auto";
   return opts;
-}
-
-function migratePrompt(prompt) {
-  // Old format used a boolean `replaceText`; map it to the string outputMode
-  if (prompt.replaceText === true && !prompt.outputMode) prompt.outputMode = "replace";
-  // Old format used `promptSettings` for raw API JSON; rename to extraParams
-  if (prompt.promptSettings && !prompt.extraParams) prompt.extraParams = prompt.promptSettings;
-  prompt.outputMode     = prompt.outputMode     || "popup";
-  prompt.followUpRounds = prompt.followUpRounds ?? 1;
-  // Fields added in the refactor — old stored prompts won't have these
-  prompt.context        = prompt.context        || "selection";
-  prompt.content        = prompt.content        ?? "";
-  prompt.userContent    = prompt.userContent    ?? "";
-  return prompt;
 }
 
 // ── Save ──────────────────────────────────────────────────────────────────────

@@ -61,18 +61,8 @@ function initFloatingButton() {
   chrome.storage.onChanged.addListener(() => { _cachedOptions = null; });
 }
 
-function onSelectionMouseUp(e) {
-  _suppressSelectionHide = false;
-  if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
-
-  const sel  = window.getSelection();
-  const text = sel?.toString().trim();
-  if (!text) { hideFloatingButton(); return; }
-
-  if (_cachedOptions !== null) {
-    maybeShowFloatingButton(sel, _cachedOptions);
-    return;
-  }
+function loadOptionsAndShow(sel) {
+  if (_cachedOptions !== null) { maybeShowFloatingButton(sel, _cachedOptions); return; }
   if (_loadingOptions) return;
   _loadingOptions = true;
   chrome.storage.local.get(null).then((opts) => {
@@ -82,23 +72,20 @@ function onSelectionMouseUp(e) {
   });
 }
 
+function onSelectionMouseUp(e) {
+  _suppressSelectionHide = false;
+  if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
+  const sel = window.getSelection();
+  if (!sel?.toString().trim()) { hideFloatingButton(); return; }
+  loadOptionsAndShow(sel);
+}
+
 function onSelectionKeyUp(e) {
   if (_menuOpen) return;
   if (e.target.closest?.("#lcgpt-float-btn, #lcgpt-result-container")) return;
-  const sel  = window.getSelection();
-  const text = sel?.toString().trim();
-  if (!text) return; // selectionchange already handles hiding
-  if (_cachedOptions !== null) {
-    maybeShowFloatingButton(sel, _cachedOptions);
-    return;
-  }
-  if (_loadingOptions) return;
-  _loadingOptions = true;
-  chrome.storage.local.get(null).then((opts) => {
-    _cachedOptions  = opts;
-    _loadingOptions = false;
-    maybeShowFloatingButton(sel, opts);
-  });
+  const sel = window.getSelection();
+  if (!sel?.toString().trim()) return;
+  loadOptionsAndShow(sel);
 }
 
 function maybeShowFloatingButton(sel, opts) {
@@ -133,12 +120,25 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         font-family: Arial, sans-serif; font-size: 12px;
         cursor: default; user-select: none; color: #000;
       }
-      button {
-        border: none; background: none; cursor: pointer;
-        font-family: inherit; color: inherit;
-      }
+      button { border: none; background: none; cursor: pointer; font-family: inherit; color: inherit; }
       button:hover  { background: #f0f0f0; }
       button:active { background: #ddd; }
+      #lcgpt-float-main  { padding: 4px 8px; font-size: 12px; }
+      #lcgpt-float-arrow { border-left: 1px solid #ccc; padding: 4px 6px; font-size: 11px; }
+      #lcgpt-float-menu  {
+        position: absolute; top: 100%; left: 0; min-width: 220px;
+        background: white; border: 1px solid #ccc; border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18); z-index: 1;
+      }
+      .lcgpt-search-wrap { padding: 4px; border-bottom: 1px solid #eee; }
+      #lcgpt-float-search {
+        width: 100%; box-sizing: border-box;
+        border: 1px solid #ccc; border-radius: 3px;
+        padding: 3px 6px; font-size: 12px;
+        font-family: Arial, sans-serif; color: #000; background: #fff; outline: none;
+      }
+      #lcgpt-float-list { max-height: 130px; overflow-y: auto; }
+      .lcgpt-menu-item  { padding: 5px 10px; cursor: pointer; color: #000; white-space: nowrap; }
       .lcgpt-menu-item:hover,
       .lcgpt-menu-item--active { background: #e8f0fe; }
     `;
@@ -156,9 +156,9 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
 
   wrap.innerHTML = `
-    <button id="lcgpt-float-main"  style="padding:4px 8px;font-size:12px">${mainLabel}</button>
-    <button id="lcgpt-float-arrow" style="border-left:1px solid #ccc;padding:4px 6px;font-size:11px" title="Choose prompt">▾</button>
-    <div    id="lcgpt-float-menu"  style="display:none;position:absolute;top:100%;left:0;min-width:220px;background:white;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.18);z-index:1"></div>
+    <button id="lcgpt-float-main">${mainLabel}</button>
+    <button id="lcgpt-float-arrow" title="Choose prompt">▾</button>
+    <div    id="lcgpt-float-menu"  style="display:none"></div>
   `;
 
   const menu = wrap.querySelector("#lcgpt-float-menu");
@@ -171,12 +171,11 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     // This preserves whatever text selection was active when the button appeared —
     // both a normal document selection and a selection inside a focused textarea.
     menu.innerHTML = `
-      <div style="padding:4px;border-bottom:1px solid #eee">
+      <div class="lcgpt-search-wrap">
         <input id="lcgpt-float-search" type="text" autocomplete="off"
-               placeholder="Type a question or filter prompts…"
-               style="width:100%;box-sizing:border-box;border:1px solid #ccc;border-radius:3px;padding:3px 6px;font-size:12px;font-family:Arial,sans-serif;color:#000;background:#fff;outline:none;">
+               placeholder="Type a question or filter prompts…">
       </div>
-      <div id="lcgpt-float-list" style="max-height:130px;overflow-y:auto;"></div>
+      <div id="lcgpt-float-list"></div>
     `;
     const searchInput = menu.querySelector("#lcgpt-float-search");
     const listEl      = menu.querySelector("#lcgpt-float-list");
@@ -186,7 +185,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         ? prompts.filter((p) => p.title.toLowerCase().includes(filter.toLowerCase()))
         : prompts;
       listEl.innerHTML = filtered.map((p) =>
-        `<div class="lcgpt-menu-item" data-id="${p.id}" style="padding:5px 10px;cursor:pointer;color:#000;white-space:nowrap">${esc(p.title)}</div>`
+        `<div class="lcgpt-menu-item" data-id="${p.id}">${esc(p.title)}</div>`
       ).join("");
       listEl.querySelectorAll(".lcgpt-menu-item").forEach((item) => {
         item.addEventListener("mouseover", () => setHighlight(item));
@@ -201,13 +200,9 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
       if (el) { el.classList.add("lcgpt-menu-item--active"); el.scrollIntoView({ block: "nearest" }); }
     }
 
-    searchInput.addEventListener("input", () => { renderList(searchInput.value); setHighlight(null); });
-
     function handleMenuKey(e) {
-      // Clean up if the menu was closed externally (e.g. hideFloatingButton() was called
-      // by a click outside). hideFloatingButton() hides the button container but does not
-      // set menu.style.display, so we check _menuOpen as the authoritative signal.
-      if (!_menuOpen || menu.style.display === "none") { _menuOpen = false; document.removeEventListener("keydown", handleMenuKey, true); return; }
+      // hideFloatingButton() sets _menuOpen = false; that's the authoritative signal to clean up.
+      if (!_menuOpen) { document.removeEventListener("keydown", handleMenuKey, true); return; }
 
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
@@ -262,7 +257,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   wrap.querySelector("#lcgpt-float-arrow").onclick = (e) => {
     e.stopPropagation();
-    if (menu.style.display === "none") openMenu(); else menu.style.display = "none";
+    if (menu.style.display === "none") openMenu(); else { _menuOpen = false; menu.style.display = "none"; }
   };
 
   // Capture selection context now — focus shifts when the button is clicked,
