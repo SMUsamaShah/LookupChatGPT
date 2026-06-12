@@ -1,4 +1,6 @@
-importScripts("defaults.js", "providers.js");
+// Chrome runs this as a service worker (importScripts available); Firefox runs it
+// as an event page where manifest_firefox.json loads defaults.js/providers.js first.
+if (typeof importScripts === "function") importScripts("defaults.js", "providers.js");
 
 chrome.storage.local.get(null).then(createContextMenus);
 chrome.storage.onChanged.addListener(handleLocalStorageChanges);

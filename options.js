@@ -139,6 +139,10 @@ function saveOptions() {
   });
 
   chrome.storage.local.set(opts).then(() => {
+    // Drop pre-1.73 keys. chrome.storage.local.set merges, so the legacy top-level
+    // `token` would otherwise linger and get re-migrated into providers.openai.token
+    // on every load — resurrecting the key even after the user deliberately clears it.
+    chrome.storage.local.remove(["token", "extButtonPrompt"]);
     // Briefly flash the save button to confirm
     const btn = $("savePrompts");
     btn.textContent = "Saved ✓";

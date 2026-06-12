@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lookup selected text via ChatGPT",
-  "version": "1.7",
+  "version": "1.73",
   "description": "Look up selected text using ChatGPT using your own prompts and show the results on the same page",
   "permissions": ["activeTab", "contextMenus", "storage"],
   "host_permissions": [
@@ -11,7 +11,7 @@
     "https://openrouter.ai/*"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["defaults.js", "providers.js", "background.js"]
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
