@@ -70,7 +70,10 @@ function normalizeOptions(options) {
     options.providers.openai = { token: options.token, model: "" };
   }
   options.defaultProvider = options.defaultProvider || "openai";
-  options.providers       = options.providers || { openai: { token: "", model: "" } };
+  options.providers       = options.providers || {};
+  for (const key of Object.keys(PROVIDERS)) {
+    options.providers[key] = options.providers[key] || { token: "", model: "" };
+  }
   options.selectionButton = options.selectionButton || { enabled: false, defaultPromptId: 0 };
   // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
   options.defaultPopupStyle       = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
@@ -88,8 +91,8 @@ function processPrompt(prompt, varData) {
     VAR_PAGE_URL:      varData.pageURL      || "",
   };
   for (const [key, val] of Object.entries(vars)) {
-    prompt.content     = prompt.content.replace(key, val);
-    prompt.userContent = prompt.userContent.replace(key, val);
+    prompt.content     = prompt.content.replaceAll(key, val);
+    prompt.userContent = prompt.userContent.replaceAll(key, val);
   }
   prompt.content     = prompt.content.trim();
   prompt.userContent = prompt.userContent.trim();

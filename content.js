@@ -15,6 +15,8 @@ chrome.runtime.onMessage.addListener((message) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 let _cachedOptions        = null;  // invalidated whenever storage changes
 let _loadingOptions       = false; // prevents duplicate in-flight storage reads
 let _buttonPagePos        = null;  // page-coordinate anchor for the floating button
@@ -152,7 +154,6 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   const wrap = shadow.getElementById("lcgpt-float-wrap");
 
-  const esc        = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
 
   wrap.innerHTML = `
@@ -375,8 +376,8 @@ function displayResult(lookup) {
   const dialog = document.createElement("div");
   dialog.innerHTML = `
     <div class="lcgpt-result-panel" style="${lookup.prompt.popupStyle}">
-      <b class="lcgpt-title">[${lookup.prompt.title}: ${lookup.prompt.userContent}]</b>
-      <div class="lcgpt-message">${lookup.lookupResult}</div>
+      <b class="lcgpt-title">[${esc(lookup.prompt.title)}: ${esc(lookup.prompt.userContent)}]</b>
+      <div class="lcgpt-message"></div>
       ${showFollowUp
         ? `<div class="lcgpt-question" contenteditable placeholder="Ask a follow-up…"></div>`
         : ""}
@@ -386,6 +387,8 @@ function displayResult(lookup) {
       </div>
     </div>
   `;
+  // API response must never be injected as HTML — use textContent to prevent XSS.
+  dialog.querySelector(".lcgpt-message").textContent = lookup.lookupResult;
   shadow.appendChild(dialog);
 
   // Dismiss

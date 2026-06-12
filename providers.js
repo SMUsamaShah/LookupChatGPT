@@ -55,7 +55,8 @@ const PROVIDERS = {
 
     parseResponse(json) {
       if (json.error) return { error: json.error.message };
-      return { result: json.choices[0].message.content };
+      const result = json.choices?.[0]?.message?.content;
+      return result != null ? { result } : { error: "Unexpected response format from OpenAI" };
     },
   },
 
@@ -92,7 +93,8 @@ const PROVIDERS = {
 
     parseResponse(json) {
       if (json.error) return { error: json.error.message };
-      return { result: json.content[0].text };
+      const result = json.content?.[0]?.text;
+      return result != null ? { result } : { error: "Unexpected response format from Anthropic" };
     },
   },
 
@@ -119,7 +121,8 @@ const PROVIDERS = {
 
     parseResponse(json) {
       if (json.error) return { error: json.error.message };
-      return { result: json.choices[0].message.content };
+      const result = json.choices?.[0]?.message?.content;
+      return result != null ? { result } : { error: "Unexpected response format from OpenRouter" };
     },
   },
 
@@ -158,7 +161,8 @@ const PROVIDERS = {
 
     parseResponse(json) {
       if (json.error) return { error: json.error.message };
-      return { result: json.candidates[0].content.parts[0].text };
+      const result = json.candidates?.[0]?.content?.parts?.[0]?.text;
+      return result != null ? { result } : { error: "Unexpected response format from Google" };
     },
   },
 
