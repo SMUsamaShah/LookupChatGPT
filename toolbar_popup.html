@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; width: 280px; color: #000; background: #fff; }
+  #search-wrap { padding: 6px 8px; border-bottom: 1px solid #ddd; }
+  #search {
+    width: 100%; border: 1px solid #ccc; border-radius: 3px;
+    padding: 5px 8px; font-size: 13px; font-family: inherit;
+    color: #000; background: #fff; outline: none;
+  }
+  #prompt-list { max-height: 260px; overflow-y: auto; }
+  .item { padding: 7px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item:hover, .item--active { background: #e8f0fe; }
+</style>
+</head>
+<body>
+  <div id="search-wrap">
+    <input id="search" type="text" autocomplete="off"
+           placeholder="Type a question or filter prompts…" autofocus>
+  </div>
+  <div id="prompt-list"></div>
+  <script src="defaults.js"></script>
+  <script src="toolbar_popup.js"></script>
+</body>
+</html>

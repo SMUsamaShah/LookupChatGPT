@@ -1,79 +1,162 @@
 <!DOCTYPE html>
 <html>
-<body>
-<style type="text/css">
-    table input[type="text"],
-    table input[type="number"],
-    table input[type="email"],
-    table textarea {
-        width: 100%; /* Make the input fields fill the width of the cell */
-        box-sizing: border-box; /* Include padding and border within the specified width */
-    }
-    textarea {
-        width: 300px;
-        height: 70px;
-    }
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; margin: 20px; max-width: 1400px; }
+  h1   { font-size: 18px; }
+  h2   { font-size: 14px; margin-top: 20px; margin-bottom: 6px; }
+
+  /* Providers table */
+  #providersTable { border-collapse: collapse; margin-bottom: 8px; }
+  #providersTable td, #providersTable th { padding: 4px 8px; }
+  #providersTable th { text-align: left; font-weight: normal; color: #555; }
+  #providersTable input[type="password"],
+  #providersTable input[type="text"] { width: 280px; }
+
+  /* Prompts table */
+  #promptTable { border-collapse: collapse; width: 100%; }
+  #promptTable th, #promptTable td { border: 1px solid #ccc; padding: 3px 5px; vertical-align: top; }
+  #promptTable th { background: #f5f5f5; font-weight: normal; font-size: 11px; white-space: nowrap; }
+  #promptTable input[type="text"],
+  #promptTable input[type="number"],
+  #promptTable select,
+  #promptTable textarea { width: 100%; box-sizing: border-box; }
+  #promptTable input[type="number"] { width: 48px; }
+  #promptTable [contenteditable] { white-space: pre-wrap; min-height: 2em; }
+
+  details { margin: 6px 0; }
+  details summary { cursor: pointer; color: #333; }
+  textarea { font-family: monospace; font-size: 12px; }
+  #defaultPopupStyle { width: 400px; height: 120px; }
+  .behavior-row { margin: 6px 0; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; }
+  #savePrompts, #addNewPrompt { margin-top: 8px; padding: 4px 12px; }
 </style>
-<div id="customMessagesForm">
-    <h1>Settings</h1>
-    <label for="authToken">OpenAI API token:</label>
-    <input type="password" id="authToken"><br/>
-    <br/>
-    <details>
-        <summary>Default Settings (JSON): </summary>
-        <pre>
-        {
-            "model": "gpt-3.5-turbo"
-        }
-        </pre>
-        Example settings:
-        <pre>
-        { "model": "gpt-4-1106-preview" }
-        </pre>
-        See for more parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">https://platform.openai.com/docs/api-reference/chat/create</a>
-    </details>
-    <br/>
-    <details>
-        <summary>Default Popup Style (CSS):</summary>
-        <textarea id="defaultPopupStyle"></textarea>
-    </details>
-    <br>
-    <label for="extButtonPrompt">System Prompt for extension button popup box:</label><br>
-    <textarea id="extButtonPrompt"></textarea>
-    <br>
-    <p>Following variables can be used in your prompts:<br>
-    <pre>
-    VAR_SELECTED_TEXT
-    VAR_PAGE_TITLE
-    VAR_PAGE_URL
-    </pre>
-    </p>
-    <input type="checkbox" id="toggleAdvancedColumns"><label for="toggleAdvancedColumns">Show Advanced Columns</label>
-    <h2>Your custom prompts</h2>
-    <table id="promptTable" border="1" width="100%">
-        <thead>
-        <tr>
-            <th style="width: 2%;">Up/Down</th>
-            <th style="width: 2%;">Enabled</th>
-            <th class="advanced" style="width: 5%;">Context</th>
-            <th style="width: 2%;">Replace text</th>
-            <th style="width: 10%;">Title</th>
-            <th style="width: 30%;">System Prompt</th>
-            <th class="advanced" style="width: 10%;">User Message</th>
-            <th class="advanced" style="width: 10%;">Prompt Settings (JSON)</th>
-            <th class="advanced" style="width: 10%;">Popup Style (CSS properties for .lookupchatgpt-popup)</th>
-            <th style="width: 5%;">Action</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- Rows will be added here -->
-        </tbody>
-    </table>
-    
-    <button id="addNewPrompt">Add prompt</button>
-    <button id="savePrompts">Save</button>
+</head>
+<body>
+
+<h1>Settings</h1>
+
+<!-- ── Providers ─────────────────────────────────────────────────── -->
+<h2>Providers</h2>
+<table id="providersTable">
+  <thead>
+    <tr>
+      <th>Provider</th>
+      <th>API Key</th>
+      <th>Default model <span style="color:#999;font-size:11px">(optional — leave blank to use the built-in default)</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>OpenAI<br><small><a href="https://platform.openai.com/api-keys" target="_blank">API Keys</a> · <a href="https://platform.openai.com/signup" target="_blank">Sign Up</a></small></td>
+      <td><input type="password" id="openai-token"  placeholder="sk-…"></td>
+      <td><input type="text"     id="openai-model"  placeholder="gpt-4o-mini"></td>
+    </tr>
+    <tr>
+      <td>Anthropic Claude<br><small><a href="https://console.anthropic.com/settings/keys" target="_blank">API Keys</a> · <a href="https://console.anthropic.com/" target="_blank">Sign Up</a></small></td>
+      <td><input type="password" id="anthropic-token"  placeholder="sk-ant-…"></td>
+      <td><input type="text"     id="anthropic-model"  placeholder="claude-3-5-haiku-20241022"></td>
+    </tr>
+    <tr>
+      <td>Google Gemini<br><small><a href="https://aistudio.google.com/app/apikey" target="_blank">API Keys</a> · <a href="https://aistudio.google.com/" target="_blank">Sign Up</a></small></td>
+      <td><input type="password" id="google-token"  placeholder="AIza…"></td>
+      <td><input type="text"     id="google-model"  placeholder="gemini-1.5-flash"></td>
+    </tr>
+    <tr>
+      <td>OpenRouter<br><small><a href="https://openrouter.ai/settings/keys" target="_blank">API Keys</a> · <a href="https://openrouter.ai/" target="_blank">Sign Up</a></small></td>
+      <td><input type="password" id="openrouter-token"  placeholder="sk-or-…"></td>
+      <td><input type="text"     id="openrouter-model"  placeholder="openai/gpt-4o-mini"></td>
+    </tr>
+  </tbody>
+</table>
+<label for="defaultProvider">Default provider:</label>
+<select id="defaultProvider">
+  <option value="openai">OpenAI</option>
+  <option value="anthropic">Anthropic Claude</option>
+  <option value="google">Google Gemini</option>
+  <option value="openrouter">OpenRouter</option>
+</select>
+
+<br><br>
+
+<details>
+  <summary>Popup appearance (CSS)</summary>
+  <br>
+  <textarea id="defaultPopupStyle"></textarea>
+  <br>
+  <button id="resetCSS" style="margin-top:4px">Reset to default</button>
+</details>
+
+<!-- ── Behavior ───────────────────────────────────────────────────── -->
+<h2>Behavior</h2>
+<div class="behavior-row">
+  <label>
+    <input type="checkbox" id="selectionButtonEnabled">
+    Show a floating <b>✦</b> button when text is selected
+    <span style="color:#888">(disabled by default — opt in here)</span>
+  </label>
 </div>
+<div class="behavior-row" id="selectionButtonPromptRow">
+  Default prompt for the floating button:
+  <select id="selectionButtonPrompt"><!-- populated dynamically by options.js --></select>
+</div>
+<div class="behavior-row">
+  Custom query output mode:
+  <select id="customQueryOutputMode">
+    <option value="auto">Auto-detect (replace if editable field, popup otherwise)</option>
+    <option value="popup">Always show popup</option>
+    <option value="replace">Always replace selected text</option>
+  </select>
+</div>
+<div class="behavior-row">
+  <label for="customQuerySystemPrompt">Custom query system prompt <span style="color:#999;font-size:11px">(optional — leave blank for no system message)</span></label><br>
+  <textarea id="customQuerySystemPrompt" style="width:500px;height:50px;margin-top:3px" placeholder="e.g. You are a helpful assistant."></textarea>
+</div>
+
+<!-- ── Prompts ────────────────────────────────────────────────────── -->
+<br>
+<p style="margin:4px 0">
+  Variables available in prompts:
+  <code>VAR_SELECTED_TEXT</code> &nbsp;
+  <code>VAR_PAGE_TITLE</code> &nbsp;
+  <code>VAR_PAGE_URL</code>
+</p>
+
+<label>
+  <input type="checkbox" id="toggleAdvancedColumns">
+  Show advanced columns
+</label>
+
+<h2>Prompts</h2>
+<table id="promptTable">
+  <thead>
+    <tr>
+      <th style="width:2%"></th>
+      <th style="width:2%">On</th>
+      <th style="width:8%">Output</th>
+      <th style="width:4%">Follow-up<br>rounds</th>
+      <th style="width:12%">Title</th>
+      <th style="width:35%">System Prompt</th>
+      <th class="advanced" style="width:10%">Context</th>
+      <th class="advanced" style="width:10%">User Message</th>
+      <th class="advanced" style="width:7%">Provider</th>
+      <th class="advanced" style="width:8%">Model override</th>
+      <th class="advanced" style="width:10%">Extra Params (JSON)</th>
+      <th class="advanced" style="width:10%">Result Panel Style (CSS)</th>
+      <th style="width:4%"></th>
+    </tr>
+  </thead>
+  <tbody><!-- rows added by options.js --></tbody>
+</table>
+
+<button id="addNewPrompt">Add prompt</button>
+<button id="resetPrompts">Reset to defaults</button>
+<button id="savePrompts">Save</button>
+
 <script src="defaults.js"></script>
+<script src="providers.js"></script>
 <script src="options.js"></script>
 </body>
 </html>
