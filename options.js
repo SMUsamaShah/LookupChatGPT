@@ -143,6 +143,13 @@ function saveOptions() {
     // `token` would otherwise linger and get re-migrated into providers.openai.token
     // on every load — resurrecting the key even after the user deliberately clears it.
     chrome.storage.local.remove(["token", "extButtonPrompt"]);
+    // Mirror provider keys/models to chrome.storage.sync so a signed-in browser
+    // profile carries them to the user's other machines (background.js restores
+    // them into local storage on the other side). Failure is non-fatal — sync
+    // storage is unavailable e.g. in Firefox temporary installs.
+    chrome.storage.sync
+      .set({ providers: opts.providers, defaultProvider: opts.defaultProvider })
+      .catch((err) => console.warn("lcgpt: could not mirror settings to sync storage:", err));
     // Briefly flash the save button to confirm
     const btn = $("savePrompts");
     btn.textContent = "Saved ✓";

@@ -1,5 +1,22 @@
 // ── Visual defaults ───────────────────────────────────────────────────────────
 
+// The follow-up question box styles live in their own constant because CSS
+// migration needs them separately: CSS stored by pre-1.73 versions predates the
+// question box, and without these rules the box renders as an invisible
+// zero-height div. migrateCSSClassNames() appends this block to legacy CSS.
+const DEFAULT_QUESTION_STYLE = `.lcgpt-question {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.4em;
+  margin-top: 6px;
+  padding: 2px 4px;
+  border: 1px solid #ccc;
+  outline: none;
+  background: #fff;
+  color: #000;
+}`;
+
 const DEFAULT_POPUP_STYLE = `:host {
   display: block;
   position: fixed;
@@ -53,18 +70,7 @@ const DEFAULT_POPUP_STYLE = `:host {
 .lcgpt-message {
   white-space: pre-wrap;
 }
-.lcgpt-question {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 1.4em;
-  margin-top: 6px;
-  padding: 2px 4px;
-  border: 1px solid #ccc;
-  outline: none;
-  background: #fff;
-  color: #000;
-}`;
+${DEFAULT_QUESTION_STYLE}`;
 
 const DEFAULT_SELECTED_TEXT_PROMPT_CONTENT = "I'll input a word or sentence or a symbol in next message taken from webpage (page title: VAR_PAGE_TITLE page URL: VAR_PAGE_URL). If it is a name of something or someone give some info about that while being terse. If it's a non-english text, just translate it to English. Otherwise just explain what it means.";
 const DEFAULT_SELECTED_TEXT_PROMPT_TITLE   = "What's this?";
@@ -86,7 +92,8 @@ $ = (id) => document.getElementById(id);
 // and options.js so the migration happens at every load path.
 function migrateCSSClassNames(css) {
   if (!css) return css;
-  if (css.includes("lookupchatgpt")) {
+  const isLegacy = css.includes("lookupchatgpt");
+  if (isLegacy) {
     css = css
       // Oldest names: lookupchatgpt-popup-* (before the "result-dialog" rename)
       .replace(/#lookupchatgpt-popup-container\b/g,         "#lcgpt-result-container")
@@ -101,7 +108,14 @@ function migrateCSSClassNames(css) {
       .replace(/\.lookupchatgpt-button-container\b/g,       ".lcgpt-button-container");
   }
   // Migrate from regular DOM selector to shadow DOM :host selector
-  return css.replace(/#lcgpt-result-container\b/g, ":host");
+  css = css.replace(/#lcgpt-result-container\b/g, ":host");
+  // Legacy CSS predates the follow-up question box; without these rules the box
+  // renders as an invisible zero-height div. Only heal CSS that was actually
+  // migrated — CSS already in the current format is the user's own business.
+  if (isLegacy && !css.includes(".lcgpt-question")) {
+    css += "\n" + DEFAULT_QUESTION_STYLE;
+  }
+  return css;
 }
 
 // Normalises a StoredPrompt loaded from storage, handling fields added or renamed
