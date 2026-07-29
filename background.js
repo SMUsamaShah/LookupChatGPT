@@ -3,7 +3,9 @@
 if (typeof importScripts === "function") importScripts("defaults.js", "providers.js");
 
 chrome.storage.local.get(null).then(createContextMenus);
-chrome.storage.onChanged.addListener(handleLocalStorageChanges);
+chrome.storage.onChanged.addListener(handleStorageChanges);
+// Catch up on snapshots that synced in while the service worker was asleep
+restoreOptionsFromSync();
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -29,14 +31,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const PROMPT_ID_PREFIX = "custom-prompt";
 
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
+  if (details.reason !== "install") return;
+  // If this browser profile already has synced settings from another machine,
+  // adopt them instead of seeding defaults — the user shouldn't have to set
+  // anything up again. (If Chrome hasn't downloaded the sync data yet, defaults
+  // are seeded now and the snapshot is adopted when it arrives, because its
+  // savedAt will be newer than this machine's.)
+  restoreOptionsFromSync({ force: true }).then((restored) => {
+    if (restored) return;
     const settings = new Options();
-
     makeDefaultPrompts().forEach(p => settings.promptData.push(p));
-
     settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
     chrome.storage.local.set(settings);
-  }
+  });
 });
 
 // ── Context menu ──────────────────────────────────────────────────────────────
@@ -55,8 +62,17 @@ function createContextMenus(result) {
   });
 }
 
-function handleLocalStorageChanges(changes) {
-  if ("promptData" in changes) chrome.storage.local.get(null).then(createContextMenus);
+function handleStorageChanges(changes, area) {
+  if (area === "local" && "promptData" in changes) {
+    chrome.storage.local.get(null).then(createContextMenus);
+  }
+  // A sync-area change means the user saved settings on another machine (or this
+  // one — then the snapshot timestamp check inside makes the restore a no-op).
+  // Applying the snapshot writes promptData locally, which re-enters this
+  // function via the local branch above and rebuilds the context menus.
+  if (area === "sync" && "syncMeta" in changes) {
+    restoreOptionsFromSync();
+  }
 }
 
 // ── Migration helpers ─────────────────────────────────────────────────────────
