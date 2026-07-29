@@ -152,6 +152,71 @@ function makeDefaultPrompts() {
   return [whatIsThis, summarize];
 }
 
+// ── Settings sync ─────────────────────────────────────────────────────────────
+// The full Options object is mirrored to chrome.storage.sync on every save, so
+// a signed-in browser profile carries settings (prompts, CSS, API keys, …) to
+// the user's other machines. chrome.storage.local stays the single source of
+// truth that all other code reads; sync is only a transport.
+//
+// chrome.storage.sync allows ~8 KB per item, so the JSON is split into chunks:
+//   syncMeta          { savedAt, chunkCount }
+//   syncChunk_0..N-1  string pieces of JSON.stringify(options)
+// `syncSavedAt` in *local* storage records which snapshot this machine has
+// applied; a snapshot is only adopted when its savedAt is newer, so the most
+// recent Save on any machine wins.
+
+// 2000 UTF-16 units re-stringify to at most ~6 KB of UTF-8 (worst case 3 bytes
+// per unit; JSON escapes are 2 ASCII bytes), comfortably under the item quota.
+const SYNC_CHUNK_CHARS = 2000;
+
+function pushOptionsToSync(options) {
+  const json    = JSON.stringify(options);
+  const payload = {};
+  let chunkCount = 0;
+  for (let i = 0; i < json.length; i += SYNC_CHUNK_CHARS) {
+    payload[`syncChunk_${chunkCount++}`] = json.slice(i, i + SYNC_CHUNK_CHARS);
+  }
+  const savedAt = Date.now();
+  payload.syncMeta = { savedAt, chunkCount };
+
+  return chrome.storage.sync.get("syncMeta").then((old) =>
+    chrome.storage.sync.set(payload).then(() => {
+      // Remove chunks left over from a previously larger snapshot, so a stale
+      // tail can never be glued onto a shorter one.
+      const stale = [];
+      for (let i = chunkCount; i < (old.syncMeta?.chunkCount || 0); i++) stale.push(`syncChunk_${i}`);
+      return stale.length ? chrome.storage.sync.remove(stale) : undefined;
+    })
+  ).then(() => savedAt);
+}
+
+// Applies the synced snapshot to local storage if it is newer than what this
+// machine has already applied (or unconditionally with force, used on fresh
+// installs). Resolves to true when a snapshot was applied.
+function restoreOptionsFromSync({ force = false } = {}) {
+  return Promise.all([
+    chrome.storage.sync.get(null),
+    chrome.storage.local.get("syncSavedAt"),
+  ]).then(([synced, local]) => {
+    const meta = synced.syncMeta;
+    if (!meta?.chunkCount) return false;
+    if (!force && meta.savedAt <= (local.syncSavedAt || 0)) return false;
+    let json = "";
+    for (let i = 0; i < meta.chunkCount; i++) {
+      const piece = synced[`syncChunk_${i}`];
+      if (typeof piece !== "string") return false; // partially propagated — retry on next sync event
+      json += piece;
+    }
+    const options = JSON.parse(json); // corrupt data throws into the catch below
+    return chrome.storage.local
+      .set({ ...options, syncSavedAt: meta.savedAt })
+      .then(() => true);
+  }).catch((err) => {
+    console.warn("lcgpt: could not restore settings from sync storage:", err);
+    return false;
+  });
+}
+
 // ── Data classes ──────────────────────────────────────────────────────────────
 
 class StoredPrompt {

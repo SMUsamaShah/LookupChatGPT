@@ -4,7 +4,8 @@ if (typeof importScripts === "function") importScripts("defaults.js", "providers
 
 chrome.storage.local.get(null).then(createContextMenus);
 chrome.storage.onChanged.addListener(handleStorageChanges);
-restoreProvidersFromSync();
+// Catch up on snapshots that synced in while the service worker was asleep
+restoreOptionsFromSync();
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -30,16 +31,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const PROMPT_ID_PREFIX = "custom-prompt";
 
 chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === "install") {
+  if (details.reason !== "install") return;
+  // If this browser profile already has synced settings from another machine,
+  // adopt them instead of seeding defaults — the user shouldn't have to set
+  // anything up again. (If Chrome hasn't downloaded the sync data yet, defaults
+  // are seeded now and the snapshot is adopted when it arrives, because its
+  // savedAt will be newer than this machine's.)
+  restoreOptionsFromSync({ force: true }).then((restored) => {
+    if (restored) return;
     const settings = new Options();
-
     makeDefaultPrompts().forEach(p => settings.promptData.push(p));
-
     settings.defaultPopupStyle = DEFAULT_POPUP_STYLE;
-    // Restore synced provider keys AFTER the defaults are written, otherwise the
-    // empty providers object in `settings` would clobber a restore that ran first.
-    chrome.storage.local.set(settings).then(restoreProvidersFromSync);
-  }
+    chrome.storage.local.set(settings);
+  });
 });
 
 // ── Context menu ──────────────────────────────────────────────────────────────
@@ -62,50 +66,13 @@ function handleStorageChanges(changes, area) {
   if (area === "local" && "promptData" in changes) {
     chrome.storage.local.get(null).then(createContextMenus);
   }
-  // A sync-area change means the user saved provider settings on another machine
-  // (or this one — then the values are identical and the write is a no-op).
-  // Adopt them wholesale; local writes here don't loop back into this branch.
-  if (area === "sync" && ("providers" in changes || "defaultProvider" in changes)) {
-    const update = {};
-    if (changes.providers?.newValue)       update.providers       = changes.providers.newValue;
-    if (changes.defaultProvider?.newValue) update.defaultProvider = changes.defaultProvider.newValue;
-    if (Object.keys(update).length) chrome.storage.local.set(update);
+  // A sync-area change means the user saved settings on another machine (or this
+  // one — then the snapshot timestamp check inside makes the restore a no-op).
+  // Applying the snapshot writes promptData locally, which re-enters this
+  // function via the local branch above and rebuilds the context menus.
+  if (area === "sync" && "syncMeta" in changes) {
+    restoreOptionsFromSync();
   }
-}
-
-// ── Provider sync ─────────────────────────────────────────────────────────────
-// API keys and model choices are mirrored to chrome.storage.sync when saved on
-// the options page, so a signed-in browser profile carries them to the user's
-// other machines. chrome.storage.local stays the single source of truth that
-// the rest of the code reads; this only fills it from sync.
-
-// Copies synced provider tokens/models into local storage, but never overwrites
-// a provider that already has a token locally (conservative: runs at every
-// service worker startup, where local state may be newer than sync).
-function restoreProvidersFromSync() {
-  Promise.all([
-    chrome.storage.sync.get(["providers", "defaultProvider"]),
-    chrome.storage.local.get(["providers", "defaultProvider"]),
-  ]).then(([synced, local]) => {
-    if (!synced.providers) return;
-    const providers = local.providers || {};
-    // No local token anywhere = fresh install (or pre-1.73 upgrade); safe to also
-    // adopt the synced default provider, which install seeds to "openai".
-    const isFreshLocal = !Object.values(providers).some((p) => p?.token);
-    let changed = false;
-    for (const [key, cfg] of Object.entries(synced.providers)) {
-      if (!providers[key]?.token && (cfg.token || cfg.model)) {
-        providers[key] = cfg;
-        changed = true;
-      }
-    }
-    const update = {};
-    if (changed) update.providers = providers;
-    if (isFreshLocal && synced.defaultProvider && synced.defaultProvider !== local.defaultProvider) {
-      update.defaultProvider = synced.defaultProvider;
-    }
-    if (Object.keys(update).length) chrome.storage.local.set(update);
-  }).catch((err) => console.warn("lcgpt: could not restore settings from sync storage:", err));
 }
 
 // ── Migration helpers ─────────────────────────────────────────────────────────
