@@ -100,6 +100,32 @@ def collect(manifest_name):
     return manifest, files
 
 
+def version_problems(version):
+    """Check a version against Chrome's manifest rules.
+
+    One to four dot-separated integers, each 0-65535, and a non-zero component
+    may not have a leading zero -- so "2.01" is rejected even though it looks
+    fine. Catching it here beats having the Web Store reject the upload.
+    """
+    text = str(version or "")
+    if not text:
+        return ["version is missing"]
+    parts = text.split(".")
+    if not 1 <= len(parts) <= 4:
+        return [f"version {text!r} must have 1-4 dot-separated parts, found {len(parts)}"]
+    problems = []
+    for part in parts:
+        if not part.isdigit():
+            problems.append(f"version {text!r}: part {part!r} is not a non-negative integer")
+        elif len(part) > 1 and part[0] == "0":
+            problems.append(
+                f"version {text!r}: part {part!r} has a leading zero; Chrome rejects this "
+                f"(use {str(int(part))!r}, or move it to its own component)")
+        elif int(part) > 65535:
+            problems.append(f"version {text!r}: part {part!r} exceeds the maximum of 65535")
+    return problems
+
+
 def validate():
     """Check both manifests parse, agree on version, and reference real files."""
     problems, version = [], None
@@ -114,8 +140,8 @@ def validate():
             continue
 
         this_version = manifest.get("version")
-        if not re.fullmatch(r"\d+(\.\d+){0,3}", str(this_version or "")):
-            problems.append(f"{name}: version {this_version!r} is not 1-4 dot-separated integers")
+        for complaint in version_problems(this_version):
+            problems.append(f"{name}: {complaint}")
         if version is None:
             version = this_version
         elif this_version != version:
