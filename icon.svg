@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Text cursor with sparkle">
+  <title>LookupChatGPT</title>
+  <!-- rounded-square plate: superellipse corners (n=1.85), radius 220.5 -->
+  <path d="M0 220.5C0 111.2 111.2 0 220.5 0H803.5C912.8 0 1024 111.2 1024 220.5V803.5C1024 912.8 912.8 1024 803.5 1024H220.5C111.2 1024 0 912.8 0 803.5Z" fill="#fdfdfd"/>
+  <!-- I-beam cursor: stem + two stadium bars (rx = height/2) -->
+  <g fill="#0d168a">
+    <rect x="296.4" y="238.4" width="71" height="543.8"/>
+    <rect x="182.9" y="238.4" width="298.1" height="77.6" rx="38.8"/>
+    <rect x="182.9" y="704.7" width="298.1" height="77.6" rx="38.8"/>
+  </g>
+  <!-- four-point sparkle: 4 cubic segments, tips on the axes -->
+  <path d="M667.6 266.2C747.5 479.9 693.9 417.6 877.9 510.4C693.9 603.2 747.5 540.9 667.6 754.6C587.7 540.9 641.3 603.2 457.3 510.4C641.3 417.6 587.7 479.9 667.6 266.2Z" fill="#07ccfd"/>
+</svg>
