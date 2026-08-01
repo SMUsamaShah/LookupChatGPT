@@ -9,8 +9,8 @@
     <rect x="182.9" y="704.7" width="298.1" height="77.6" rx="38.8"/>
   </g>
   <!-- four-point sparkle: 4 cubics, tips on the axes.
-       Control points sit at (0.247, 0.081) of the tip radii; pulling them
+       Control points sit at (0.133, 0.044) of the tip radii; pulling them
        toward the centre deepens the concave flanks and slims the star.
-       Waist sits at 0.248 of the tip radius. -->
-  <path d="M667.6 266.2C719.5 490.6 684.7 450.1 877.9 510.4C684.7 570.7 719.5 530.2 667.6 754.6C615.7 530.2 650.5 570.7 457.3 510.4C650.5 450.1 615.7 490.6 667.6 266.2Z" fill="#07ccfd"/>
+       Waist sits at 0.191 of the tip radius. -->
+  <path d="M667.6 266.2C695.6 499.7 676.8 477.9 877.9 510.4C676.8 542.9 695.6 521.1 667.6 754.6C639.6 521.1 658.4 542.9 457.3 510.4C658.4 477.9 639.6 499.7 667.6 266.2Z" fill="#07ccfd"/>
 </svg>
