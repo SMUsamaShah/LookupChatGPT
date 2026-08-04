@@ -10,14 +10,10 @@
     "https://generativelanguage.googleapis.com/*",
     "https://openrouter.ai/*"
   ],
+  "optional_host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["content.js"],
-    "run_at": "document_end"
-  }],
   "options_page": "options.html",
   "icons": {
     "16": "icon16.png",

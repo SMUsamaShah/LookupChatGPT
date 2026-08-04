@@ -8,6 +8,12 @@ chrome.storage.onChanged.addListener(handleStorageChanges);
 restoreOptionsFromSync();
 chrome.contextMenus.onClicked.addListener(handleContextMenuClicked);
 
+// Dynamic content-script registrations do survive restarts, but the setting or
+// the permission can change while the worker is asleep, so reconcile on wake.
+syncSelectionButtonScript();
+chrome.permissions.onAdded.addListener(syncSelectionButtonScript);
+chrome.permissions.onRemoved.addListener(syncSelectionButtonScript);
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case "relookup":
@@ -66,6 +72,9 @@ function handleStorageChanges(changes, area) {
   if (area === "local" && "promptData" in changes) {
     chrome.storage.local.get(null).then(createContextMenus);
   }
+  // Enabling or disabling the floating button decides whether content.js runs
+  // persistently on every page.
+  if (area === "local" && "selectionButton" in changes) syncSelectionButtonScript();
   // A sync-area change means the user saved settings on another machine (or this
   // one — then the snapshot timestamp check inside makes the restore a no-op).
   // Applying the snapshot writes promptData locally, which re-enters this
@@ -171,6 +180,60 @@ function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, 
 // Sends a message to the content script in a tab.
 // Retries with exponential backoff in case the content script isn't ready yet
 // (e.g. document_end hasn't fired, or the page is still loading).
+// content.js is not declared in the manifest, so it has to be put into the tab
+// before anything can be shown there. The user's click (context menu or toolbar
+// icon) grants activeTab for that tab, which is what permits this injection —
+// no host permission required, and therefore no install-time warning.
+//
+// Ping first: a tab that already has the script must not be injected again.
+function ensureContentScript(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { action: "ping" }, () => {
+      if (!chrome.runtime.lastError) { resolve(true); return; }   // already present
+      chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] })
+        .then(() => resolve(true))
+        .catch((err) => {
+          // Restricted pages (chrome://, the Web Store, PDF viewer) can never be
+          // injected into. Nothing can be displayed there, with or without this.
+          console.error("lcgpt: could not inject content script:", err);
+          resolve(false);
+        });
+    });
+  });
+}
+
+// ── Floating button registration ──────────────────────────────────────────────
+// The floating ✦ button is the one feature needing a script on every page at all
+// times, so it is gated behind the optional <all_urls> permission the user grants
+// when enabling it. Registration is kept in step with (enabled AND granted).
+
+const SELECTION_BUTTON_SCRIPT_ID = "lcgpt-selection-button";
+
+async function syncSelectionButtonScript() {
+  try {
+    const { selectionButton } = await chrome.storage.local.get("selectionButton");
+    const granted = await chrome.permissions.contains({ origins: ["<all_urls>"] });
+    const shouldRun = Boolean(selectionButton?.enabled) && granted;
+
+    const registered = await chrome.scripting.getRegisteredContentScripts({
+      ids: [SELECTION_BUTTON_SCRIPT_ID],
+    });
+
+    if (shouldRun && registered.length === 0) {
+      await chrome.scripting.registerContentScripts([{
+        id:      SELECTION_BUTTON_SCRIPT_ID,
+        matches: ["<all_urls>"],
+        js:      ["content.js"],
+        runAt:   "document_end",
+      }]);
+    } else if (!shouldRun && registered.length > 0) {
+      await chrome.scripting.unregisterContentScripts({ ids: [SELECTION_BUTTON_SCRIPT_ID] });
+    }
+  } catch (err) {
+    console.warn("lcgpt: could not sync the selection-button content script:", err);
+  }
+}
+
 function sendMessageToTab(tabId, message, retries = 5, delay = 200) {
   chrome.tabs.sendMessage(tabId, message).catch((err) => {
     if (retries > 0) {
@@ -227,7 +290,9 @@ function sendRequestToAPI(lookup) {
   .then((json) => {
     const { result, error } = provider.parseResponse(json);
     lookup.lookupResult = result || error || "No response received.";
-    sendMessageToTab(lookup.tabId, { action: "displayResult", lookup });
+    // Put content.js in the tab before asking it to render anything.
+    ensureContentScript(lookup.tabId)
+      .then(() => sendMessageToTab(lookup.tabId, { action: "displayResult", lookup }));
   })
   .catch((err) => console.error("lcgpt: API request failed:", err));
 }

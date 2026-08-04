@@ -64,9 +64,17 @@ searchEl.addEventListener("keydown", (e) => {
 function withActiveTab(callback) {
   chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
     const tab = tabs[0];
+    if (!tab) return;
+    // content.js is no longer on every page, so it cannot be messaged for the
+    // selection. Read it directly instead: opening this popup is a click on the
+    // extension action, which grants activeTab for this tab and permits the
+    // injection. Nothing is left behind on the page.
     chrome.scripting.executeScript(
       { target: { tabId: tab.id }, func: () => window.getSelection().toString() },
-      (results) => callback(tab, results?.[0]?.result || "")
+      (results) => {
+        if (chrome.runtime.lastError) { callback(tab, ""); return; }
+        callback(tab, results?.[0]?.result || "");
+      }
     );
   });
 }

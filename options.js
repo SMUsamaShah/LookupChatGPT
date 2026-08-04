@@ -16,6 +16,31 @@ document.addEventListener("click", (e) => {
   else if (e.target.matches("#savePrompts"))           saveOptions();
 });
 
+// ── Floating button permission ────────────────────────────────────────────────
+// The floating ✦ button is the only feature that needs to run on every page, so
+// the extension does not ask for <all_urls> up front. It is requested here, at
+// the moment the user opts in, and dropped again when they opt out.
+//
+// The request has to happen in the checkbox's own change event: Chrome only
+// honours permissions.request() from a user gesture, so deferring it to Save
+// would be rejected.
+$("selectionButtonEnabled").addEventListener("change", (e) => {
+  const checkbox = e.target;
+  if (!checkbox.checked) {
+    chrome.permissions.remove({ origins: ["<all_urls>"] });
+    return;
+  }
+  chrome.permissions.request({ origins: ["<all_urls>"] }, (granted) => {
+    if (granted) return;
+    // Declined — leave the feature off rather than storing a setting that
+    // silently cannot work.
+    checkbox.checked = false;
+    alert("The floating button needs permission to run on the pages you visit.\n\n" +
+          "Without it the extension only acts on the page when you use the right-click " +
+          "menu or the toolbar button.");
+  });
+});
+
 // ── Load ──────────────────────────────────────────────────────────────────────
 
 function loadOptions(raw) {

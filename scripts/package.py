@@ -45,10 +45,19 @@ def html_assets(rel_path):
     return out
 
 
+# Injected at runtime rather than declared in a manifest, so walking the manifest
+# cannot find them. content.js is put into a tab by background.js via
+# chrome.scripting, and registered as a persistent content script only once the
+# user enables the floating button and grants <all_urls>. Keeping it out of the
+# manifest is what avoids the "read your data on all websites" install warning,
+# but it still has to ship inside the ZIP.
+INJECTED_AT_RUNTIME = ["content.js"]
+
+
 def collect(manifest_name):
     """Every file the extension needs, resolved from the manifest outward."""
     manifest = json.loads((ROOT / manifest_name).read_text(encoding="utf-8"))
-    files, html = set(), []
+    files, html = set(INJECTED_AT_RUNTIME), []
 
     def add(path, is_html=False):
         if not path or REMOTE.match(path):
