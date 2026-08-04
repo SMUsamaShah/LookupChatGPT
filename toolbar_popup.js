@@ -12,23 +12,19 @@ document.addEventListener("DOMContentLoaded", () => {
 const searchEl = document.getElementById("search");
 const listEl   = document.getElementById("prompt-list");
 
-function esc(s) {
-  return String(s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
 function renderList(filter) {
-  const filtered = filter
-    ? _prompts.filter((p) => p.title.toLowerCase().includes(filter.toLowerCase()))
-    : _prompts;
-  listEl.innerHTML = filtered.map((p) =>
-    `<div class="item" data-id="${p.id}">${esc(p.title)}</div>`
-  ).join("");
-  listEl.querySelectorAll(".item").forEach((item) => {
+  const needle = filter.toLowerCase();
+  listEl.textContent = "";
+  for (const p of _prompts) {
+    if (needle && !p.title.toLowerCase().includes(needle)) continue;
+    const item = document.createElement("div");
+    item.className   = "item";
+    item.dataset.id  = p.id;          // read back by the Enter key handler
+    item.textContent = p.title;       // a prompt title is the user's own text, not markup
     item.addEventListener("mouseover", () => setHighlight(item));
-    item.addEventListener("click",     () => runPrompt(parseInt(item.dataset.id)));
-  });
+    item.addEventListener("click",     () => runPrompt(p.id));
+    listEl.appendChild(item);
+  }
 }
 
 function getHighlighted() { return listEl.querySelector(".item--active"); }
@@ -67,10 +63,10 @@ function withActiveTab(callback) {
   chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
     const tab = tabs[0];
     if (!tab) return;
-    // content.js is no longer on every page, so it cannot be messaged for the
-    // selection. Read it directly instead: opening this popup is a click on the
-    // extension action, which grants activeTab for this tab and permits the
-    // injection. Nothing is left behind on the page.
+    // Read the selection straight out of the page rather than asking a content
+    // script for it: opening this popup is a click on the extension action, which
+    // grants activeTab for this tab and permits the injection. The function runs
+    // and returns; nothing is left behind on the page.
     chrome.scripting.executeScript(
       { target: { tabId: tab.id }, func: () => window.getSelection().toString() },
       (results) => {
@@ -81,10 +77,9 @@ function withActiveTab(callback) {
   });
 }
 
-// The popup closes on its own rather than waiting to be called back. The
-// background script now answers these messages, but a popup left on screen
-// because a reply went missing is a worse failure than closing a moment early —
-// the message is already on its way by the time close() runs.
+// The popup closes itself rather than waiting for a reply to come back. The
+// message is already on its way by the time close() runs, and a popup left on
+// screen because a reply went missing is the worse failure of the two.
 function send(message) {
   chrome.runtime.sendMessage(message);
   window.close();

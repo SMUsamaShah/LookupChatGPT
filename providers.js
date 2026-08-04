@@ -1,7 +1,9 @@
 // All provider-specific API knowledge lives here.
 //
 // To add a new provider:
-//   1. Add an entry to PROVIDERS below (label, defaultModel, buildRequest, parseResponse)
+//   1. Add an entry to PROVIDERS below (label, defaultModel, buildRequest, parseResponse).
+//      If it speaks OpenAI's /chat/completions dialect, chatCompletionsProvider()
+//      is the whole entry — pass a label, a default model and a URL.
 //   2. Add a matching key to Options.providers in defaults.js
 //   3. Add a key/model row to the Providers table in options.html
 //   Nothing else needs to change.
@@ -25,29 +27,34 @@
 // parseResponse receives the raw parsed JSON from the provider.
 // Returns: { result } on success, or { error } on failure.
 
-const PROVIDERS = {
+// The turn list, in our internal format: the prompt's user message, then any
+// completed exchanges oldest first, then the follow-up question. When a follow-up
+// is being asked and no history has been kept, lookupResult is the assistant turn
+// that precedes it; when history is non-empty its last entry already is.
+// Every provider needs this same sequence, so it is assembled once.
+function conversation({ userContent, history, lookupResult, userQuestion }) {
+  const turns = [];
+  if (userContent) turns.push({ role: "user", content: userContent });
+  turns.push(...history);
+  if (userQuestion) {
+    if (history.length === 0) turns.push({ role: "assistant", content: lookupResult });
+    turns.push({ role: "user", content: userQuestion });
+  }
+  return turns;
+}
 
-  openai: {
-    label:        "OpenAI",
-    defaultModel: "gpt-4o-mini",
+// OpenAI's /chat/completions request and response shape, which OpenRouter serves
+// too. The system prompt is the first message and the key is a bearer token.
+function chatCompletionsProvider({ label, defaultModel, url }) {
+  return {
+    label,
+    defaultModel,
 
-    buildRequest({ systemPrompt, userContent, history, lookupResult, userQuestion, model, extraParams }) {
-      const messages = [];
-      if (systemPrompt) messages.push({ role: "system",    content: systemPrompt });
-      if (userContent)  messages.push({ role: "user",      content: userContent  });
-
-      // Append completed past exchanges (oldest first)
-      for (const turn of history) messages.push(turn);
-
-      if (userQuestion) {
-        // When history is empty the only preceding assistant message is lookupResult.
-        // When history is non-empty its last entry is already the preceding assistant message.
-        if (history.length === 0) messages.push({ role: "assistant", content: lookupResult });
-        messages.push({ role: "user", content: userQuestion });
-      }
-
+    buildRequest({ systemPrompt, model, extraParams, ...turnData }) {
+      const messages = systemPrompt ? [{ role: "system", content: systemPrompt }] : [];
+      messages.push(...conversation(turnData));
       return {
-        url:     "https://api.openai.com/v1/chat/completions",
+        url,
         headers: (apiKey) => ({ "Authorization": `Bearer ${apiKey}` }),
         body:    { model, messages, ...extraParams },
       };
@@ -56,24 +63,33 @@ const PROVIDERS = {
     parseResponse(json) {
       if (json.error) return { error: json.error.message };
       const result = json.choices?.[0]?.message?.content;
-      return result != null ? { result } : { error: "Unexpected response format from OpenAI" };
+      return result != null ? { result } : { error: `Unexpected response format from ${label}` };
     },
-  },
+  };
+}
+
+const PROVIDERS = {
+
+  openai: chatCompletionsProvider({
+    label:        "OpenAI",
+    defaultModel: "gpt-4o-mini",
+    url:          "https://api.openai.com/v1/chat/completions",
+  }),
+
+  openrouter: chatCompletionsProvider({
+    label:        "OpenRouter",
+    defaultModel: "openai/gpt-4o-mini",
+    url:          "https://openrouter.ai/api/v1/chat/completions",
+  }),
 
   anthropic: {
     label:        "Anthropic Claude",
     defaultModel: "claude-3-5-haiku-20241022",
 
-    buildRequest({ systemPrompt, userContent, history, lookupResult, userQuestion, model, extraParams }) {
+    buildRequest({ systemPrompt, model, extraParams, ...turnData }) {
       // Anthropic separates system instructions from the messages array.
       // Roles are "user" / "assistant" — same as our internal format.
-      const messages = [];
-      if (userContent) messages.push({ role: "user", content: userContent });
-      for (const turn of history) messages.push(turn);
-      if (userQuestion) {
-        if (history.length === 0) messages.push({ role: "assistant", content: lookupResult });
-        messages.push({ role: "user", content: userQuestion });
-      }
+      const messages = conversation(turnData);
 
       return {
         url:     "https://api.anthropic.com/v1/messages",
@@ -98,53 +114,17 @@ const PROVIDERS = {
     },
   },
 
-  openrouter: {
-    label:        "OpenRouter",
-    defaultModel: "openai/gpt-4o-mini",
-
-    buildRequest({ systemPrompt, userContent, history, lookupResult, userQuestion, model, extraParams }) {
-      const messages = [];
-      if (systemPrompt) messages.push({ role: "system",    content: systemPrompt });
-      if (userContent)  messages.push({ role: "user",      content: userContent  });
-      for (const turn of history) messages.push(turn);
-      if (userQuestion) {
-        if (history.length === 0) messages.push({ role: "assistant", content: lookupResult });
-        messages.push({ role: "user", content: userQuestion });
-      }
-
-      return {
-        url:     "https://openrouter.ai/api/v1/chat/completions",
-        headers: (apiKey) => ({ "Authorization": `Bearer ${apiKey}` }),
-        body:    { model, messages, ...extraParams },
-      };
-    },
-
-    parseResponse(json) {
-      if (json.error) return { error: json.error.message };
-      const result = json.choices?.[0]?.message?.content;
-      return result != null ? { result } : { error: "Unexpected response format from OpenRouter" };
-    },
-  },
-
   google: {
     label:        "Google Gemini",
     defaultModel: "gemini-1.5-flash",
 
-    buildRequest({ systemPrompt, userContent, history, lookupResult, userQuestion, model, extraParams }) {
-      // Google uses { role, parts: [{ text }] } instead of { role, content }.
-      // Google also calls the assistant role "model", not "assistant".
-      const toTurn = (role, content) => ({
+    buildRequest({ systemPrompt, model, extraParams, ...turnData }) {
+      // Google uses { role, parts: [{ text }] } instead of { role, content },
+      // and calls the assistant role "model".
+      const contents = conversation(turnData).map(({ role, content }) => ({
         role:  role === "assistant" ? "model" : "user",
         parts: [{ text: content }],
-      });
-
-      const contents = [];
-      if (userContent) contents.push(toTurn("user", userContent));
-      for (const turn of history) contents.push(toTurn(turn.role, turn.content));
-      if (userQuestion) {
-        if (history.length === 0) contents.push(toTurn("assistant", lookupResult));
-        contents.push(toTurn("user", userQuestion));
-      }
+      }));
 
       return {
         // Model name is part of the URL for Google

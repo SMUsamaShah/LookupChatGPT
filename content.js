@@ -1,6 +1,7 @@
 // Content script.
 // Responsibilities:
-//   1. Display result dialogs (displayResult)
+//   1. Draw the result panel — pending first, then the answer (showPendingPanel,
+//      displayResult), or swap the answer into the selection in replace mode
 //   2. Show a floating ✦ button near text selections when the feature is enabled
 //
 // This script is NOT declared in the manifest. background.js injects it into a
@@ -44,12 +45,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-// Quotes are escaped too, so this stays correct if it is ever used inside an
-// attribute rather than in element text.
-const esc = (s) => String(s)
-  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-
 // Only the keys the floating button needs. Never chrome.storage.local.get(null):
 // that would pull the API keys into the page's content-script world for no reason.
 const FLOAT_BUTTON_KEYS = ["selectionButton", "promptData", "customQueryOutputMode"];
@@ -74,12 +69,14 @@ function closeMenuKeyHandler() {
   _menuKeyHandler = null;
 }
 
-function initFloatingButton() {
-  // Hover/active styles for the floating button are injected into its own
-  // shadow root in showFloatingButton — no document.head injection needed.
+// True for the floating button and the result panel — the extension's own UI,
+// which selection handling must leave alone.
+const inExtensionUI = (target, selector = "#lcgpt-float-btn, #lcgpt-result-container") =>
+  Boolean(target?.closest?.(selector));
 
+function initFloatingButton() {
   document.addEventListener("mousedown", (e) => {
-    if (e.target.closest("#lcgpt-float-btn")) {
+    if (inExtensionUI(e.target, "#lcgpt-float-btn")) {
       // e.preventDefault() stops the browser from moving focus away from whatever
       // currently has it. This has two effects:
       //   1. A document text selection stays highlighted (browser only dims it on focus loss).
@@ -102,8 +99,8 @@ function initFloatingButton() {
     // typing can clear the document selection, but we must not hide the button —
     // the captured text (_capturedText) is already saved and is still valid.
     if (_menuOpen) return;
-    if (document.activeElement?.closest("#lcgpt-float-btn")) return;
-    if (!window.getSelection()?.toString().trim()) hideFloatingButton();
+    if (inExtensionUI(document.activeElement, "#lcgpt-float-btn")) return;
+    if (!selectedText()) hideFloatingButton();
   });
 
   document.addEventListener("scroll", updateFloatingButtonPosition, { passive: true });
@@ -121,20 +118,20 @@ function loadOptionsAndShow(sel) {
   });
 }
 
+const selectedText = () => window.getSelection()?.toString().trim() || "";
+
 function onSelectionMouseUp(e) {
   _suppressSelectionHide = false;
-  if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
-  const sel = window.getSelection();
-  if (!sel?.toString().trim()) { hideFloatingButton(); return; }
-  loadOptionsAndShow(sel);
+  if (inExtensionUI(e.target)) return;
+  if (!selectedText()) { hideFloatingButton(); return; }
+  loadOptionsAndShow(window.getSelection());
 }
 
+// Keyboard selection (shift+arrows, ctrl+A) shows the button but never hides it:
+// an ordinary keystroke that happens to clear the selection is not a dismissal.
 function onSelectionKeyUp(e) {
-  if (_menuOpen) return;
-  if (e.target.closest?.("#lcgpt-float-btn, #lcgpt-result-container")) return;
-  const sel = window.getSelection();
-  if (!sel?.toString().trim()) return;
-  loadOptionsAndShow(sel);
+  if (_menuOpen || inExtensionUI(e.target)) return;
+  if (selectedText()) loadOptionsAndShow(window.getSelection());
 }
 
 function maybeShowFloatingButton(sel, opts) {
@@ -201,26 +198,25 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   const wrap = shadow.getElementById("lcgpt-float-wrap");
 
-  const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
-
   // Replacing the markup below detaches any open menu, so its key handler goes too.
   closeMenuKeyHandler();
   _menuOpen = false;
 
   wrap.innerHTML = `
-    <button id="lcgpt-float-main">${mainLabel}</button>
+    <button id="lcgpt-float-main"></button>
     <button id="lcgpt-float-arrow" title="Choose prompt">▾</button>
     <div    id="lcgpt-float-menu"  style="display:none"></div>
   `;
 
   const menu = wrap.querySelector("#lcgpt-float-menu");
+  // Prompt titles are the user's own text and go in as text, never as markup.
+  wrap.querySelector("#lcgpt-float-main").textContent =
+    defaultPrompt ? `✦ ${defaultPrompt.title}` : "✦ Ask…";
 
   function openMenu() {
-    // Every previous menu's key handler must be gone before this one attaches.
-    // They used to be removed only on Escape/Enter, so closing with ▾ or by
-    // clicking away left one alive holding the old menu's search text and
-    // highlight — and it would then act on that stale state on the next Enter,
-    // firing a prompt the user could no longer see selected.
+    // A handler left over from an earlier menu still holds that menu's search
+    // text and highlight, and would act on them on the next Enter — firing a
+    // prompt nothing on screen shows as chosen. Only one may ever be attached.
     closeMenuKeyHandler();
     _menuOpen = true;
     // The search input intentionally never receives browser focus (no .focus() call,
@@ -239,16 +235,18 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     const listEl      = menu.querySelector("#lcgpt-float-list");
 
     function renderList(filter) {
-      const filtered = filter
-        ? prompts.filter((p) => p.title.toLowerCase().includes(filter.toLowerCase()))
-        : prompts;
-      listEl.innerHTML = filtered.map((p) =>
-        `<div class="lcgpt-menu-item" data-id="${p.id}">${esc(p.title)}</div>`
-      ).join("");
-      listEl.querySelectorAll(".lcgpt-menu-item").forEach((item) => {
+      const needle = filter.toLowerCase();
+      listEl.textContent = "";
+      for (const p of prompts) {
+        if (needle && !p.title.toLowerCase().includes(needle)) continue;
+        const item = document.createElement("div");
+        item.className   = "lcgpt-menu-item";
+        item.dataset.id  = p.id;          // read back by the Enter key handler
+        item.textContent = p.title;
         item.addEventListener("mouseover", () => setHighlight(item));
-        item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
-      });
+        item.addEventListener("click", () => { hideFloatingButton(); runFloatingPrompt(p.id); });
+        listEl.appendChild(item);
+      }
     }
 
     function getHighlighted() { return listEl.querySelector(".lcgpt-menu-item--active"); }
@@ -548,10 +546,9 @@ function displayResult(lookup, failed) {
 
 // ── Replace selected text ─────────────────────────────────────────────────────
 
-// Returns true when the text actually went somewhere. The caller falls back to
-// the popup on false — this used to return silently, so a "replace" result aimed
-// at anything but a textarea or input[type=text] vanished after being paid for,
-// even though isEditableElement had already said the field was editable.
+// Returns true when the text actually went somewhere, false when there was
+// nowhere to put it. The caller shows the answer in the popup instead of
+// discarding it — the request has already been made and paid for either way.
 function replaceSelectedText(text) {
   const el = document.activeElement;
   if (!isEditableElement(el)) return false;

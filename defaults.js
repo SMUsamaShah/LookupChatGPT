@@ -291,7 +291,7 @@ class StoredPrompt {
   enabled     = true;
   context     = "selection"; // "selection" = appears on right-click of selected text | "page" = always appears
   outputMode  = "popup";     // "popup" = show result in floating popup | "replace" = replace selected text in-place
-  popupStyle  = "";          // CSS override applied inline to .lookupchatgpt-result-dialog for this prompt
+  popupStyle  = "";          // extra CSS for this prompt's .lcgpt-result-panel, applied as inline style
 
   // Controls the follow-up input box shown below every result popup:
   //   0 = hide it entirely (one-shot prompt — translate, replace-text, etc.)
@@ -353,6 +353,6 @@ class Lookup {
 
   // Completed past exchanges, oldest first: [{ role: "user"|"assistant", content: string }, ...]
   // Populated only when followUpRounds > 1. Length is kept ≤ (followUpRounds - 1) * 2
-  // (each complete exchange = 2 entries). See popup.js for the trimming logic.
+  // (each complete exchange = 2 entries). content.js does the trimming.
   history = [];
 }

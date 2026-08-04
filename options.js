@@ -267,11 +267,11 @@ function toggleAdvancedColumns() {
   });
 }
 
-// Rows are assembled from DOM nodes rather than an HTML string. Prompt text is
+// Rows are assembled from DOM nodes, never from an HTML string. Prompt text is
 // arbitrary user content — "wrap the answer in <b> tags", an extraParams value of
-// {"stop": ["<end>"]}, a model override containing a quote — and interpolating it
-// into markup silently ate whatever the parser took for a tag, both on screen and
-// again when the mangled text was read back out and saved.
+// {"stop": ["<end>"]}, a model override containing a quote — and anything the HTML
+// parser takes for a tag is lost on screen and lost again when the row is read back
+// out and saved. Set text as text and none of that arises.
 
 function el(tag, props = {}, children = []) {
   const node = Object.assign(document.createElement(tag), props);

@@ -14,25 +14,15 @@ syncSelectionButtonScript();
 chrome.permissions.onAdded.addListener(syncSelectionButtonScript);
 chrome.permissions.onRemoved.addListener(syncSelectionButtonScript);
 
-// Every branch answers synchronously. Returning true without ever calling
-// sendResponse holds the message channel open forever: the sender's callback
-// never runs (which used to leave the toolbar popup on screen after a click)
-// and its promise never settles.
+// Every branch answers synchronously, so none of them returns true. Returning
+// true promises a later sendResponse; without one the message channel stays open
+// indefinitely, the sender's callback never runs and its promise never settles.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
-    case "relookup":
-      handleRelookup(request.lookup);
-      break;
-    case "ext_button_message":
-      handleExtButtonMessage(request.userText, request.tab, request.selectedText, request.promptId);
-      break;
-    case "selection_button_click":
-      // sender.tab.id is used so the content script doesn't need to know its own tab ID
-      handleSelectionButtonClick(request.promptId, request.selectedText, request.pageTitle, request.pageURL, sender.tab.id);
-      break;
-    case "custom_selection_query":
-      handleCustomSelectionQuery(request.queryText, request.selectedText, request.pageTitle, request.pageURL, request.outputMode, request.tabId ?? sender.tab?.id);
-      break;
+    case "relookup":               handleRelookup(request.lookup);              break;
+    case "ext_button_message":     handleExtButtonMessage(request);             break;
+    case "selection_button_click": handleSelectionButtonClick(request, sender); break;
+    case "custom_selection_query": handleCustomSelectionQuery(request, sender); break;
     default:
       return false;
   }
@@ -90,9 +80,6 @@ function handleStorageChanges(changes, area) {
   }
 }
 
-// normalizeOptions() lives in defaults.js — options.js runs the same migration,
-// and two copies of it drifting apart is a data-corruption bug waiting to happen.
-
 // ── Prompt variable substitution ──────────────────────────────────────────────
 
 function processPrompt(prompt, varData) {
@@ -110,69 +97,78 @@ function processPrompt(prompt, varData) {
 }
 
 // ── Message handlers ──────────────────────────────────────────────────────────
+//
+// Every entry point ends up doing the same four things: read the settings, decide
+// which prompt to run, substitute the page variables into it, and send it. They
+// differ only in where the selected text and page details come from, and in how
+// the prompt is chosen — so that last part is the callback.
 
-// A follow-up arrives carrying the lookup the panel was rendered from, which has
-// been stripped of everything secret on the way out (see viewForTab). Options are
-// re-read from storage rather than trusted from the tab — that keeps API keys in
-// the service worker, and means a follow-up picks up settings changed since the
-// first request instead of replaying a stale copy.
+function startLookup({ tabId, selectedText, pageTitle, pageURL, promptId = "", choosePrompt }) {
+  chrome.storage.local.get(null).then((options) => {
+    normalizeOptions(options);
+    const prompt = choosePrompt(options);
+    processPrompt(prompt, { selectedText, pageTitle, pageURL });
+    sendRequestToAPI(Object.assign(new Lookup(), { selectedText, tabId, promptId, prompt, options }));
+  }).catch((err) => console.error("lcgpt: lookup failed:", err));
+}
+
+function handleContextMenuClicked(info, tab) {
+  const promptId = info.menuItemId.split("-").pop();
+  startLookup({
+    tabId: tab.id, selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url, promptId,
+    choosePrompt: (options) => normalizePrompt(options.promptData[promptId]),
+  });
+}
+
+// From the toolbar popup, which supplies the tab because it has no sender.tab.
+function handleExtButtonMessage({ userText, tab, selectedText, promptId }) {
+  startLookup({
+    tabId: tab.id, selectedText, pageTitle: tab.title, pageURL: tab.url, promptId,
+    choosePrompt: (options) => {
+      const prompt = normalizePrompt(options.promptData[promptId]);
+      if (userText) prompt.userContent = userText + "\n" + prompt.userContent;
+      return prompt;
+    },
+  });
+}
+
+// From the floating button in the page; sender.tab.id saves the content script
+// from having to know its own tab ID.
+function handleSelectionButtonClick({ promptId, selectedText, pageTitle, pageURL }, sender) {
+  startLookup({
+    tabId: sender.tab?.id, selectedText, pageTitle, pageURL, promptId,
+    choosePrompt: (options) => normalizePrompt(options.promptData[promptId]),
+  });
+}
+
+// A question typed straight into the floating button or the toolbar popup, with
+// no stored prompt behind it.
+function handleCustomSelectionQuery(request, sender) {
+  const { queryText, selectedText, pageTitle, pageURL, outputMode } = request;
+  startLookup({
+    tabId: request.tabId ?? sender.tab?.id, selectedText, pageTitle, pageURL,
+    choosePrompt: (options) => Object.assign(new StoredPrompt(), {
+      title:          "Custom query",
+      // normalizeOptions fills in the default when the field is absent, so an
+      // empty string here is the user's deliberate "no system message".
+      content:        options.customQuerySystemPrompt,
+      userContent:    queryText,
+      outputMode,
+      followUpRounds: 1,
+    }),
+  });
+}
+
+// A follow-up arrives carrying the lookup its panel was rendered from, stripped
+// of everything secret on the way out (see viewForTab). Options are re-read from
+// storage rather than trusted from the tab: that keeps API keys in the service
+// worker, and picks up settings changed since the first request.
 function handleRelookup(view) {
   if (!view) return;
   chrome.storage.local.get(null).then((options) => {
     normalizeOptions(options);
-    const lookup = Object.assign(new Lookup(), view, { options, prompt: normalizePrompt(view.prompt) });
-    sendRequestToAPI(lookup);
-  }).catch((err) => console.error("lcgpt: follow-up handler failed:", err));
-}
-
-function handleContextMenuClicked(info, tab) {
-  const parts    = info.menuItemId.split("-");
-  const promptId = parts[parts.length - 1];
-  chrome.storage.local.get(null).then((options) => {
-    normalizeOptions(options);
-    const prompt = normalizePrompt(options.promptData[promptId]);
-    processPrompt(prompt, { selectedText: info.selectionText, pageTitle: tab.title, pageURL: tab.url });
-    const lookup = Object.assign(new Lookup(), { selectedText: info.selectionText, tabId: tab.id, promptId, prompt, options });
-    sendRequestToAPI(lookup);
-  }).catch((err) => console.error("lcgpt: context menu handler failed:", err));
-}
-
-function handleExtButtonMessage(userText, tab, selectedText, promptId) {
-  chrome.storage.local.get(null).then((options) => {
-    normalizeOptions(options);
-    const prompt = normalizePrompt(options.promptData[promptId]);
-    if (userText) prompt.userContent = userText + "\n" + prompt.userContent;
-    processPrompt(prompt, { selectedText, pageTitle: tab.title, pageURL: tab.url });
-    const lookup = Object.assign(new Lookup(), { selectedText, tabId: tab.id, promptId, prompt, options });
-    sendRequestToAPI(lookup);
-  }).catch((err) => console.error("lcgpt: ext button handler failed:", err));
-}
-
-function handleCustomSelectionQuery(queryText, selectedText, pageTitle, pageURL, outputMode, tabId) {
-  chrome.storage.local.get(null).then((options) => {
-    normalizeOptions(options);
-    const prompt          = new StoredPrompt();
-    prompt.title          = "Custom query";
-    // normalizeOptions has already filled in the default when the field is absent.
-    // An empty string here is the user's deliberate "no system message".
-    prompt.content        = options.customQuerySystemPrompt;
-    prompt.userContent    = queryText;
-    prompt.outputMode     = outputMode;
-    prompt.followUpRounds = 1;
-    processPrompt(prompt, { selectedText, pageTitle, pageURL });
-    const lookup = Object.assign(new Lookup(), { selectedText, tabId, promptId: "", prompt, options });
-    sendRequestToAPI(lookup);
-  }).catch((err) => console.error("lcgpt: custom query handler failed:", err));
-}
-
-function handleSelectionButtonClick(promptId, selectedText, pageTitle, pageURL, tabId) {
-  chrome.storage.local.get(null).then((options) => {
-    normalizeOptions(options);
-    const prompt = normalizePrompt(options.promptData[promptId]);
-    processPrompt(prompt, { selectedText, pageTitle, pageURL });
-    const lookup = Object.assign(new Lookup(), { selectedText, tabId, promptId, prompt, options });
-    sendRequestToAPI(lookup);
-  }).catch((err) => console.error("lcgpt: selection button handler failed:", err));
+    sendRequestToAPI(Object.assign(new Lookup(), view, { options, prompt: normalizePrompt(view.prompt) }));
+  }).catch((err) => console.error("lcgpt: follow-up failed:", err));
 }
 
 // ── Tab messaging ─────────────────────────────────────────────────────────────
@@ -396,8 +392,9 @@ async function sendRequestToAPI(lookup) {
       body:    JSON.stringify(body),
     });
 
-    // A provider that fails with a non-JSON body (a gateway error page, a captive
-    // portal) would otherwise throw inside .json() and disappear into a console log.
+    // Read as text first: a gateway error page or a captive portal answers with
+    // HTML, and .json() on that throws something meaningless to the reader. The
+    // status line below is what they can act on.
     const text = await response.text();
     let json;
     try {
