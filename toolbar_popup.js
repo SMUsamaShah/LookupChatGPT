@@ -64,10 +64,19 @@ searchEl.addEventListener("keydown", (e) => {
 function withActiveTab(callback) {
   chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
     const tab = tabs[0];
-    chrome.scripting.executeScript(
-      { target: { tabId: tab.id }, func: () => window.getSelection().toString() },
-      (results) => callback(tab, results?.[0]?.result || "")
-    );
+    if (!tab) return;
+    // Ask the content script for the selection instead of injecting a reader.
+    // content.js is already present on every page via the manifest, so this
+    // needs no "scripting" permission — and it works on Firefox, where that
+    // permission was never declared and executeScript therefore threw.
+    chrome.tabs.sendMessage(tab.id, { action: "getSelection" }, (selectedText) => {
+      // Reading lastError marks it handled and silences the console warning.
+      // A missing content script (restricted URL, or a tab open since before
+      // install) means no selection — the result panel could not have been
+      // rendered on such a page anyway, so this loses nothing.
+      if (chrome.runtime.lastError) { callback(tab, ""); return; }
+      callback(tab, selectedText || "");
+    });
   });
 }
 

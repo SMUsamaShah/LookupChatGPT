@@ -2,9 +2,19 @@
 // Responsibilities:
 //   1. Display result dialogs (displayResult)
 //   2. Show a floating ✦ button near text selections when the feature is enabled
+//   3. Report the page's current selection to the toolbar popup (getSelection)
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "displayResult") displayResult(message.lookup);
+
+  // The toolbar popup needs the page's selection. Reading it here — rather than
+  // having the popup inject a reader with chrome.scripting.executeScript — is
+  // what lets the extension drop the "scripting" permission: this script is
+  // already in the page, so there is nothing to inject. Responds synchronously,
+  // so the listener does not need to return true.
+  if (message.action === "getSelection") {
+    sendResponse(window.getSelection()?.toString() || "");
+  }
 });
 
 // ── Floating selection button ─────────────────────────────────────────────────
