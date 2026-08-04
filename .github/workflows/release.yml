@@ -62,11 +62,21 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-      - name: Create GitHub Release
+      # Handles both ways of tagging:
+      #   - `git push origin <tag>`  -> no Release exists yet, so create one.
+      #   - Releases UI "Draft a new release" -> tagging and the Release happen
+      #     together, so the Release already exists and we just attach the ZIPs.
+      - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; attaching ZIPs."
+            gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber
+          else
+            echo "Creating release $GITHUB_REF_NAME."
+            gh release create "$GITHUB_REF_NAME" dist/*.zip \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
