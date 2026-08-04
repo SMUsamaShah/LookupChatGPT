@@ -2,3 +2,4 @@ preview_panel.html
 dist/
 chrome_ext.zip
 firefox_ext.zip
+__pycache__/

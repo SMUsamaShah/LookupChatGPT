@@ -11,7 +11,10 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # This repo tags bare version numbers (1.2, 1.7, 2.0), so match those.
+      # The v-prefixed form is accepted too in case you switch conventions.
+      - '[0-9]+.[0-9]+*'
+      - 'v[0-9]+.[0-9]+*'
   workflow_dispatch:
 
 permissions:
@@ -41,9 +44,9 @@ jobs:
       # A tag that disagrees with the manifest would ship the wrong version
       # number to the stores, so refuse rather than guess which one is right.
       - name: Check tag matches manifest version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
-          tag="${GITHUB_REF_NAME#v}"
+          tag="${GITHUB_REF_NAME#v}"   # tolerate an optional leading v
           manifest="${{ steps.meta.outputs.version }}"
           if [ "$tag" != "$manifest" ]; then
             echo "::error::Tag $GITHUB_REF_NAME implies version $tag but manifest.json says $manifest."
@@ -60,10 +63,10 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "v${{ steps.meta.outputs.version }}" \
+            --title "$GITHUB_REF_NAME" \
             --generate-notes
