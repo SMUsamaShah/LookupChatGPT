@@ -1,20 +1,34 @@
-// Content script — injected into every page at document_end.
+// Content script.
 // Responsibilities:
 //   1. Display result dialogs (displayResult)
 //   2. Show a floating ✦ button near text selections when the feature is enabled
-//   3. Report the page's current selection to the toolbar popup (getSelection)
+//
+// This script is NOT declared in the manifest. background.js injects it into a
+// single tab, on demand, using the activeTab access the user's click grants —
+// that is what lets the extension ship without "read your data on all websites".
+// When the user opts into the floating button, background.js registers this same
+// file as a persistent content script against the <all_urls> permission they
+// granted at that point.
+//
+// The whole file is wrapped in a function so a second injection into the same
+// frame is a no-op. Without it, re-injecting would redeclare the top-level
+// const/let bindings below (a SyntaxError) and stack duplicate listeners.
+(function () {
+if (window.__lcgptRunning) return;
+window.__lcgptRunning = true;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "displayResult") displayResult(message.lookup);
-
-  // The toolbar popup needs the page's selection. Reading it here — rather than
-  // having the popup inject a reader with chrome.scripting.executeScript — is
-  // what lets the extension drop the "scripting" permission: this script is
-  // already in the page, so there is nothing to inject. Responds synchronously,
-  // so the listener does not need to return true.
-  if (message.action === "getSelection") {
-    sendResponse(window.getSelection()?.toString() || "");
+  // Both branches answer synchronously, so the listener need not return true.
+  if (message.action === "displayResult") {
+    displayResult(message.lookup);
+    // Acknowledge, or the port closes unanswered and sendMessageToTab treats it
+    // as a delivery failure and retries — redrawing the panel each time.
+    sendResponse(true);
   }
+
+  // Lets background.js detect that this frame already has the script, so it can
+  // skip injecting again.
+  if (message.action === "ping") sendResponse(true);
 });
 
 // ── Floating selection button ─────────────────────────────────────────────────
@@ -473,3 +487,5 @@ function replaceSelectedText(text) {
     sel.addRange(range);
   }
 }
+
+})();
