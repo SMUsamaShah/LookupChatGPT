@@ -18,9 +18,14 @@ if (window.__lcgptRunning) return;
 window.__lcgptRunning = true;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Both branches answer synchronously, so the listener need not return true.
+  // Every branch answers synchronously, so the listener need not return true.
+  if (message.action === "showPending") {
+    showPendingPanel(message.lookup);
+    sendResponse(true);
+  }
+
   if (message.action === "displayResult") {
-    displayResult(message.lookup);
+    displayResult(message.lookup, message.failed);
     // Acknowledge, or the port closes unanswered and sendMessageToTab treats it
     // as a delivery failure and retries — redrawing the panel each time.
     sendResponse(true);
@@ -39,7 +44,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Quotes are escaped too, so this stays correct if it is ever used inside an
+// attribute rather than in element text.
+const esc = (s) => String(s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+// Only the keys the floating button needs. Never chrome.storage.local.get(null):
+// that would pull the API keys into the page's content-script world for no reason.
+const FLOAT_BUTTON_KEYS = ["selectionButton", "promptData", "customQueryOutputMode"];
 
 let _cachedOptions        = null;  // invalidated whenever storage changes
 let _loadingOptions       = false; // prevents duplicate in-flight storage reads
@@ -50,6 +63,16 @@ let _capturedURL          = "";
 let _capturedEditable     = false; // whether the selection was inside an editable element
 let _suppressSelectionHide = false; // true while a mousedown inside the button is in flight
 let _menuOpen             = false;  // true while the floating-button dropdown is open
+let _menuKeyHandler       = null;   // the one live capture-phase key handler for the dropdown
+
+// The dropdown's key handler closes over that dropdown's search box and list, so
+// exactly one may be attached at a time. Every path that closes or rebuilds the
+// menu goes through here.
+function closeMenuKeyHandler() {
+  if (!_menuKeyHandler) return;
+  document.removeEventListener("keydown", _menuKeyHandler, true);
+  _menuKeyHandler = null;
+}
 
 function initFloatingButton() {
   // Hover/active styles for the floating button are injected into its own
@@ -91,7 +114,7 @@ function loadOptionsAndShow(sel) {
   if (_cachedOptions !== null) { maybeShowFloatingButton(sel, _cachedOptions); return; }
   if (_loadingOptions) return;
   _loadingOptions = true;
-  chrome.storage.local.get(null).then((opts) => {
+  chrome.storage.local.get(FLOAT_BUTTON_KEYS).then((opts) => {
     _cachedOptions  = opts;
     _loadingOptions = false;
     maybeShowFloatingButton(sel, opts);
@@ -180,6 +203,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
 
+  // Replacing the markup below detaches any open menu, so its key handler goes too.
+  closeMenuKeyHandler();
+  _menuOpen = false;
+
   wrap.innerHTML = `
     <button id="lcgpt-float-main">${mainLabel}</button>
     <button id="lcgpt-float-arrow" title="Choose prompt">▾</button>
@@ -189,6 +216,12 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   const menu = wrap.querySelector("#lcgpt-float-menu");
 
   function openMenu() {
+    // Every previous menu's key handler must be gone before this one attaches.
+    // They used to be removed only on Escape/Enter, so closing with ▾ or by
+    // clicking away left one alive holding the old menu's search text and
+    // highlight — and it would then act on that stale state on the next Enter,
+    // firing a prompt the user could no longer see selected.
+    closeMenuKeyHandler();
     _menuOpen = true;
     // The search input intentionally never receives browser focus (no .focus() call,
     // and mousedown on the button is already e.preventDefault()'d). All keyboard
@@ -227,7 +260,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
     function handleMenuKey(e) {
       // hideFloatingButton() sets _menuOpen = false; that's the authoritative signal to clean up.
-      if (!_menuOpen) { document.removeEventListener("keydown", handleMenuKey, true); return; }
+      if (!_menuOpen) { closeMenuKeyHandler(); return; }
 
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
@@ -237,7 +270,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         e.preventDefault(); e.stopPropagation();
         _menuOpen = false;
         menu.style.display = "none";
-        document.removeEventListener("keydown", handleMenuKey, true);
+        closeMenuKeyHandler();
       } else if (e.key === "ArrowDown") {
         e.preventDefault(); e.stopPropagation();
         if (items.length) setHighlight(items[Math.min(idx + 1, items.length - 1)]);
@@ -246,7 +279,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         if (idx <= 0) setHighlight(null); else setHighlight(items[idx - 1]);
       } else if (e.key === "Enter") {
         e.preventDefault(); e.stopPropagation();
-        document.removeEventListener("keydown", handleMenuKey, true);
+        closeMenuKeyHandler();
         if (hi) {
           hideFloatingButton();
           runFloatingPrompt(parseInt(hi.dataset.id));
@@ -269,10 +302,17 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
       }
     }
 
+    _menuKeyHandler = handleMenuKey;
     document.addEventListener("keydown", handleMenuKey, true);
 
     renderList("");
     menu.style.display = "block";
+  }
+
+  function closeMenu() {
+    _menuOpen = false;
+    menu.style.display = "none";
+    closeMenuKeyHandler();
   }
 
   wrap.querySelector("#lcgpt-float-main").onclick = () => {
@@ -282,7 +322,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   wrap.querySelector("#lcgpt-float-arrow").onclick = (e) => {
     e.stopPropagation();
-    if (menu.style.display === "none") openMenu(); else { _menuOpen = false; menu.style.display = "none"; }
+    if (menu.style.display === "none") openMenu(); else closeMenu();
   };
 
   // Capture selection context now — focus shifts when the button is clicked,
@@ -324,16 +364,22 @@ function updateFloatingButtonPosition() {
 
 function hideFloatingButton() {
   _menuOpen = false;
+  closeMenuKeyHandler();
   const btn = document.getElementById("lcgpt-float-btn");
   if (btn) btn.style.display = "none";
   _buttonPagePos = null;
 }
 
+// The single answer to "can text be swapped in here?", used both to pick the
+// output mode for a custom query and to carry it out. The input types listed are
+// exactly those that expose selectionStart/selectionEnd — input[type=email] and
+// [type=number] do not, so they count as not editable rather than as fields the
+// replacement would silently fail on.
 function isEditableElement(el) {
   if (!el) return false;
   if (el.isContentEditable) return true;
   const tag = el.tagName.toLowerCase();
-  return tag === "textarea" || (tag === "input" && /^(text|search|url|email|tel)$/.test(el.type || "text"));
+  return tag === "textarea" || (tag === "input" && /^(text|search|url|tel)$/.test(el.type || "text"));
 }
 
 function runFloatingPrompt(promptId) {
@@ -368,39 +414,46 @@ initFloatingButton();
 
 // ── Result dialog ─────────────────────────────────────────────────────────────
 
-function displayResult(lookup) {
-  if (lookup.prompt.outputMode === "replace") {
-    replaceSelectedText(lookup.lookupResult);
-    return;
-  }
+// Get or create the shadow host. The shadow root completely isolates the panel
+// from host-page CSS — including rules with !important — so no all:initial /
+// all:unset tricks are needed inside the panel styles.
+function resultShadowRoot(lookup) {
+  const existing = document.getElementById("lcgpt-result-container");
+  if (existing) return existing.shadowRoot;
 
-  // Get or create the shadow host. The shadow root completely isolates the
-  // panel from host-page CSS — including rules with !important — so no
-  // all:initial / all:unset tricks are needed inside the panel styles.
-  let host = document.getElementById("lcgpt-result-container");
-  let shadow;
-  if (!host) {
-    host    = document.createElement("div");
-    host.id = "lcgpt-result-container";
-    document.body.appendChild(host);
-    shadow  = host.attachShadow({ mode: "open" });
-    const style       = document.createElement("style");
-    // Silently migrate stored CSS that still uses #lcgpt-result-container
-    // instead of the shadow-DOM :host selector.
-    style.textContent = lookup.options.defaultPopupStyle
-      .replace(/#lcgpt-result-container\b/g, ":host");
-    shadow.appendChild(style);
-  } else {
-    shadow = host.shadowRoot;
-  }
+  const host = document.createElement("div");
+  host.id    = "lcgpt-result-container";
+  document.body.appendChild(host);
+  const shadow = host.attachShadow({ mode: "open" });
+  const style  = document.createElement("style");
+  // Silently migrate stored CSS that still uses #lcgpt-result-container
+  // instead of the shadow-DOM :host selector.
+  style.textContent = (lookup.options?.defaultPopupStyle || "")
+    .replace(/#lcgpt-result-container\b/g, ":host");
+  shadow.appendChild(style);
+  return shadow;
+}
+
+// Draws the panel skeleton for a lookup, or returns the one already on screen for
+// it. Both the "working on it" placeholder and the finished answer render through
+// here, so the answer replaces the placeholder in place rather than stacking.
+function panelFor(lookup) {
+  const shadow   = resultShadowRoot(lookup);
+  // Number() keeps this a safe selector whatever arrives; a bogus id simply misses.
+  const existing = lookup.requestId
+    ? shadow.querySelector(`.lcgpt-panel-wrap[data-req="${Number(lookup.requestId)}"]`)
+    : null;
+  if (existing) return existing;
 
   // followUpRounds = 0 means one-shot: hide the follow-up input box entirely
   const showFollowUp = (lookup.prompt.followUpRounds ?? 1) > 0;
 
   const dialog = document.createElement("div");
+  dialog.className = "lcgpt-panel-wrap";
+  if (lookup.requestId) dialog.dataset.req = String(lookup.requestId);
   dialog.innerHTML = `
-    <div class="lcgpt-result-panel" style="${lookup.prompt.popupStyle}">
-      <b class="lcgpt-title">[${esc(lookup.prompt.title)}: ${esc(lookup.prompt.userContent)}]</b>
+    <div class="lcgpt-result-panel">
+      <b class="lcgpt-title"></b>
       <div class="lcgpt-message"></div>
       ${showFollowUp
         ? `<div class="lcgpt-question" contenteditable placeholder="Ask a follow-up…"></div>`
@@ -411,11 +464,15 @@ function displayResult(lookup) {
       </div>
     </div>
   `;
-  // API response must never be injected as HTML — use textContent to prevent XSS.
-  dialog.querySelector(".lcgpt-message").textContent = lookup.lookupResult;
-  shadow.appendChild(dialog);
+  // The per-prompt CSS is set as a property, never interpolated into a style
+  // attribute: an ordinary declaration like font-family: "Segoe UI" contains
+  // quotes, which would close the attribute and turn the rest into stray
+  // attributes on the element.
+  dialog.querySelector(".lcgpt-result-panel").style.cssText = lookup.prompt.popupStyle || "";
+  // Neither the prompt title nor the user's text is trusted as markup.
+  dialog.querySelector(".lcgpt-title").textContent =
+    `[${lookup.prompt.title}: ${lookup.prompt.userContent}]`;
 
-  // Dismiss
   dialog.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => dialog.remove());
 
   // Regenerate — re-runs the original prompt, clearing any follow-up state
@@ -426,9 +483,36 @@ function displayResult(lookup) {
     chrome.runtime.sendMessage({ action: "relookup", lookup });
   });
 
-  if (!showFollowUp) return;
+  shadow.appendChild(dialog);
+  return dialog;
+}
+
+// Shown the moment a request goes out, so there is never a silent gap between
+// clicking and an answer arriving.
+function showPendingPanel(lookup) {
+  if (!document.body) return;
+  panelFor(lookup).querySelector(".lcgpt-message").textContent = "…";
+}
+
+function displayResult(lookup, failed) {
+  if (lookup.prompt.outputMode === "replace" && !failed) {
+    // Falls back to the popup when there is nothing replaceable in focus, rather
+    // than dropping an answer that has already been paid for.
+    if (replaceSelectedText(lookup.lookupResult)) return;
+  }
+  if (!document.body) return;
+
+  const dialog = panelFor(lookup);
+  // API response must never be injected as HTML — use textContent to prevent XSS.
+  dialog.querySelector(".lcgpt-message").textContent =
+    failed ? `⚠ ${lookup.lookupResult}` : lookup.lookupResult;
 
   const questionInput = dialog.querySelector(".lcgpt-question");
+  // followUpRounds = 0 hides the box; the panel may also already be wired if a
+  // result somehow arrives twice for the same request.
+  if (!questionInput || dialog.dataset.followUpWired) return;
+  dialog.dataset.followUpWired = "1";
+
   questionInput.addEventListener("keypress", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -464,28 +548,41 @@ function displayResult(lookup) {
 
 // ── Replace selected text ─────────────────────────────────────────────────────
 
+// Returns true when the text actually went somewhere. The caller falls back to
+// the popup on false — this used to return silently, so a "replace" result aimed
+// at anything but a textarea or input[type=text] vanished after being paid for,
+// even though isEditableElement had already said the field was editable.
 function replaceSelectedText(text) {
-  const sel = window.getSelection();
-  const el  = document.activeElement;
+  const el = document.activeElement;
+  if (!isEditableElement(el)) return false;
 
-  if (el.tagName.toLowerCase() === "textarea" ||
-      (el.tagName.toLowerCase() === "input" && el.type === "text")) {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "textarea" || tag === "input") {
     const start = el.selectionStart;
     const end   = el.selectionEnd;
+    // Fields such as input[type=email] disallow selectionStart/End entirely.
+    if (start == null || end == null) return false;
     el.value = el.value.slice(0, start) + text + el.value.slice(end);
     el.selectionStart = el.selectionEnd = start + text.length;
-
-  } else if (el.isContentEditable) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    const node = document.createTextNode(text);
-    range.insertNode(node);
-    // Move caret to end of inserted text
-    range.selectNodeContents(node);
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    // Frameworks that mirror the field into their own state need to be told.
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    return true;
   }
+
+  // contenteditable
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+  // Move caret to end of inserted text
+  range.selectNodeContents(node);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 }
 
 })();

@@ -1,1 +1,0 @@
-zip.com chrome_ext.zip manifest.json icon.png icon16.png icon32.png icon48.png icon128.png background.js content.js defaults.js providers.js options.js options.html toolbar_popup.html toolbar_popup.js

@@ -14,24 +14,30 @@ syncSelectionButtonScript();
 chrome.permissions.onAdded.addListener(syncSelectionButtonScript);
 chrome.permissions.onRemoved.addListener(syncSelectionButtonScript);
 
+// Every branch answers synchronously. Returning true without ever calling
+// sendResponse holds the message channel open forever: the sender's callback
+// never runs (which used to leave the toolbar popup on screen after a click)
+// and its promise never settles.
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case "relookup":
-      sendRequestToAPI(request.lookup);
-      return true;
+      handleRelookup(request.lookup);
+      break;
     case "ext_button_message":
       handleExtButtonMessage(request.userText, request.tab, request.selectedText, request.promptId);
-      return true;
+      break;
     case "selection_button_click":
       // sender.tab.id is used so the content script doesn't need to know its own tab ID
       handleSelectionButtonClick(request.promptId, request.selectedText, request.pageTitle, request.pageURL, sender.tab.id);
-      return true;
+      break;
     case "custom_selection_query":
       handleCustomSelectionQuery(request.queryText, request.selectedText, request.pageTitle, request.pageURL, request.outputMode, request.tabId ?? sender.tab?.id);
-      return true;
+      break;
     default:
       return false;
   }
+  sendResponse(true);
+  return false;
 });
 
 const PROMPT_ID_PREFIX = "custom-prompt";
@@ -84,28 +90,8 @@ function handleStorageChanges(changes, area) {
   }
 }
 
-// ── Migration helpers ─────────────────────────────────────────────────────────
-// These normalise data saved by older versions so the rest of the code can
-// assume the current shape without sprinkling version checks everywhere.
-
-function normalizeOptions(options) {
-  // Old format had a single top-level `token` field (OpenAI only)
-  if (options.token && !options.providers?.openai?.token) {
-    options.providers = options.providers || {};
-    options.providers.openai = { token: options.token, model: "" };
-  }
-  options.defaultProvider = options.defaultProvider || "openai";
-  options.providers       = options.providers || {};
-  for (const key of Object.keys(PROVIDERS)) {
-    options.providers[key] = options.providers[key] || { token: "", model: "" };
-  }
-  options.selectionButton = options.selectionButton || { enabled: false, defaultPromptId: 0 };
-  // Migrate CSS stored by older versions; fall back to built-in default if empty/missing
-  options.defaultPopupStyle       = migrateCSSClassNames(options.defaultPopupStyle) || DEFAULT_POPUP_STYLE;
-  options.customQuerySystemPrompt = options.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
-  options.customQueryOutputMode   = options.customQueryOutputMode   || "auto";
-  return options;
-}
+// normalizeOptions() lives in defaults.js — options.js runs the same migration,
+// and two copies of it drifting apart is a data-corruption bug waiting to happen.
 
 // ── Prompt variable substitution ──────────────────────────────────────────────
 
@@ -123,9 +109,21 @@ function processPrompt(prompt, varData) {
   prompt.userContent = prompt.userContent.trim();
 }
 
-// ── Lookup assembly ───────────────────────────────────────────────────────────
-
 // ── Message handlers ──────────────────────────────────────────────────────────
+
+// A follow-up arrives carrying the lookup the panel was rendered from, which has
+// been stripped of everything secret on the way out (see viewForTab). Options are
+// re-read from storage rather than trusted from the tab — that keeps API keys in
+// the service worker, and means a follow-up picks up settings changed since the
+// first request instead of replaying a stale copy.
+function handleRelookup(view) {
+  if (!view) return;
+  chrome.storage.local.get(null).then((options) => {
+    normalizeOptions(options);
+    const lookup = Object.assign(new Lookup(), view, { options, prompt: normalizePrompt(view.prompt) });
+    sendRequestToAPI(lookup);
+  }).catch((err) => console.error("lcgpt: follow-up handler failed:", err));
+}
 
 function handleContextMenuClicked(info, tab) {
   const parts    = info.menuItemId.split("-");
@@ -155,7 +153,9 @@ function handleCustomSelectionQuery(queryText, selectedText, pageTitle, pageURL,
     normalizeOptions(options);
     const prompt          = new StoredPrompt();
     prompt.title          = "Custom query";
-    prompt.content        = options.customQuerySystemPrompt || DEFAULT_CUSTOM_QUERY_SYSTEM_PROMPT;
+    // normalizeOptions has already filled in the default when the field is absent.
+    // An empty string here is the user's deliberate "no system message".
+    prompt.content        = options.customQuerySystemPrompt;
     prompt.userContent    = queryText;
     prompt.outputMode     = outputMode;
     prompt.followUpRounds = 1;
@@ -244,19 +244,127 @@ function sendMessageToTab(tabId, message, retries = 5, delay = 200) {
   });
 }
 
+// What a tab is allowed to see of a Lookup. Everything the panel needs and
+// nothing else — in particular no `providers`, which holds the API keys. The
+// content script sends this object back for follow-ups, and handleRelookup
+// re-reads the real options from storage.
+function viewForTab(lookup) {
+  return {
+    selectedText: lookup.selectedText,
+    tabId:        lookup.tabId,
+    promptId:     lookup.promptId,
+    prompt:       lookup.prompt,
+    requestId:    lookup.requestId,
+    lookupResult: lookup.lookupResult,
+    userQuestion: lookup.userQuestion,
+    history:      lookup.history || [],
+    options:      { defaultPopupStyle: lookup.options.defaultPopupStyle },
+  };
+}
+
+// ── Toolbar badge ─────────────────────────────────────────────────────────────
+// The extension icon is the only surface that works everywhere, including the
+// pages a content script can never reach, so it carries both "working on it" and
+// "that failed". Badges are per-tab so one tab's request cannot clear another's.
+
+const BADGE_WORKING = "…";
+const BADGE_FAILED  = "!";
+const _pendingByTab = new Map(); // tabId -> count of in-flight requests
+
+// Firefox's chrome.* shims do not all return promises the way Chrome's do, and a
+// tab closed mid-request rejects these anyway. Neither is worth reporting.
+function ignoreResult(maybePromise) {
+  if (maybePromise && typeof maybePromise.catch === "function") maybePromise.catch(() => {});
+}
+
+function setBadge(tabId, text, colour, title) {
+  if (typeof tabId !== "number" || tabId < 0) return;
+  ignoreResult(chrome.action.setBadgeText({ tabId, text }));
+  if (colour) ignoreResult(chrome.action.setBadgeBackgroundColor({ tabId, color: colour }));
+  ignoreResult(chrome.action.setTitle({ tabId, title: title || "" }));
+}
+
+function markRequestStarted(tabId) {
+  _pendingByTab.set(tabId, (_pendingByTab.get(tabId) || 0) + 1);
+  setBadge(tabId, BADGE_WORKING, "#4a76d0", "Looking up…");
+}
+
+function markRequestFinished(tabId) {
+  const left = (_pendingByTab.get(tabId) || 1) - 1;
+  if (left > 0) { _pendingByTab.set(tabId, left); return; } // another lookup is still running
+  _pendingByTab.delete(tabId);
+  setBadge(tabId, "", null, "");
+}
+
+function markRequestFailed(tabId, message) {
+  _pendingByTab.delete(tabId);
+  setBadge(tabId, BADGE_FAILED, "#c0392b", message);
+  setTimeout(() => {
+    if (!_pendingByTab.has(tabId)) setBadge(tabId, "", null, "");
+  }, 8000);
+}
+
 // ── API call ──────────────────────────────────────────────────────────────────
 
-function sendRequestToAPI(lookup) {
+let _nextRequestId = 1;
+
+// Turns whatever went wrong into one line a person can act on.
+function describeRequestError(err) {
+  const text = String(err?.message || err || "");
+  if (/Failed to fetch|NetworkError|network error/i.test(text)) {
+    return "Could not reach the API. Check your connection and that the extension has access to that host.";
+  }
+  if (/Unexpected token|JSON/i.test(text)) {
+    return "The API returned something that wasn't JSON — usually a proxy or an error page.";
+  }
+  return text || "The request failed.";
+}
+
+async function sendRequestToAPI(lookup) {
+  const wantsPanel = lookup.prompt.outputMode !== "replace";
+  lookup.requestId = lookup.requestId || _nextRequestId++;
+
+  // The toolbar icon is the only surface that works on every page, so it always
+  // carries the failure. Pages that can host a panel get the reason spelled out
+  // there too, including in replace mode where no panel was opened up front.
+  const badgeFail = (message) => markRequestFailed(lookup.tabId, `Lookup failed — ${message}`);
+
+  let panelIsUp = false;
+  const fail = async (message) => {
+    badgeFail(message);
+    lookup.lookupResult = message;
+    if (!panelIsUp && !await ensureContentScript(lookup.tabId)) return;
+    sendMessageToTab(lookup.tabId, { action: "displayResult", lookup: viewForTab(lookup), failed: true });
+  };
+
+  // Get the panel up before spending anything. Doing this first means a page that
+  // can never host a panel (chrome://, the Web Store, the PDF viewer) is found out
+  // now rather than after a paid-for round trip whose answer has nowhere to go.
+  if (wantsPanel) {
+    if (!await ensureContentScript(lookup.tabId)) {
+      badgeFail("this page doesn't allow extensions to show anything. Try the same lookup on a normal web page.");
+      return;
+    }
+    sendMessageToTab(lookup.tabId, { action: "showPending", lookup: viewForTab(lookup) });
+    panelIsUp = true;
+  }
+
   // Resolve provider: per-prompt override → global default → fallback to openai
   const providerKey = lookup.prompt.providerOverride || lookup.options.defaultProvider || "openai";
   const provider    = PROVIDERS[providerKey];
   if (!provider) {
-    console.error(`lcgpt: unknown provider "${providerKey}". Check your settings.`);
+    await fail(`unknown provider "${providerKey}". Check your settings.`);
     return;
   }
 
   const providerSettings = lookup.options.providers?.[providerKey] || {};
   const apiKey           = providerSettings.token || "";
+  if (!apiKey) {
+    await fail(`no API key set for ${provider.label}. Add one in the extension's settings.`);
+    return;
+  }
+
+  markRequestStarted(lookup.tabId);
 
   // Model priority: per-prompt override → per-provider setting in options → provider's built-in default
   const model = lookup.prompt.modelOverride || providerSettings.model || provider.defaultModel;
@@ -280,19 +388,38 @@ function sendRequestToAPI(lookup) {
     extraParams,
   });
 
-  fetch(url, {
-    method:  "POST",
-    mode:    "cors",
-    headers: { ...headers(apiKey), "content-type": "application/json" },
-    body:    JSON.stringify(body),
-  })
-  .then((r) => r.json())
-  .then((json) => {
+  try {
+    const response = await fetch(url, {
+      method:  "POST",
+      mode:    "cors",
+      headers: { ...headers(apiKey), "content-type": "application/json" },
+      body:    JSON.stringify(body),
+    });
+
+    // A provider that fails with a non-JSON body (a gateway error page, a captive
+    // portal) would otherwise throw inside .json() and disappear into a console log.
+    const text = await response.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error(response.ok
+        ? "The API returned something that wasn't JSON."
+        : `HTTP ${response.status} ${response.statusText || ""}`.trim());
+    }
+
     const { result, error } = provider.parseResponse(json);
     lookup.lookupResult = result || error || "No response received.";
-    // Put content.js in the tab before asking it to render anything.
-    ensureContentScript(lookup.tabId)
-      .then(() => sendMessageToTab(lookup.tabId, { action: "displayResult", lookup }));
-  })
-  .catch((err) => console.error("lcgpt: API request failed:", err));
+    markRequestFinished(lookup.tabId);
+
+    // Replace mode has no pending panel, but still needs the script in the tab.
+    if (!wantsPanel && !await ensureContentScript(lookup.tabId)) {
+      badgeFail("this page doesn't allow extensions to change it.");
+      return;
+    }
+    sendMessageToTab(lookup.tabId, { action: "displayResult", lookup: viewForTab(lookup) });
+  } catch (err) {
+    console.error("lcgpt: API request failed:", err);
+    await fail(describeRequestError(err));
+  }
 }

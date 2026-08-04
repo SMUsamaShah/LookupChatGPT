@@ -13,7 +13,9 @@ const searchEl = document.getElementById("search");
 const listEl   = document.getElementById("prompt-list");
 
 function esc(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function renderList(filter) {
@@ -79,20 +81,23 @@ function withActiveTab(callback) {
   });
 }
 
+// The popup closes on its own rather than waiting to be called back. The
+// background script now answers these messages, but a popup left on screen
+// because a reply went missing is a worse failure than closing a moment early —
+// the message is already on its way by the time close() runs.
+function send(message) {
+  chrome.runtime.sendMessage(message);
+  window.close();
+}
+
 function runPrompt(promptId) {
   withActiveTab((tab, selectedText) => {
-    chrome.runtime.sendMessage(
-      { action: "ext_button_message", userText: "", tab, selectedText, promptId: String(promptId) },
-      window.close
-    );
+    send({ action: "ext_button_message", userText: "", tab, selectedText, promptId: String(promptId) });
   });
 }
 
 function runCustomQuery(queryText) {
   withActiveTab((tab, selectedText) => {
-    chrome.runtime.sendMessage(
-      { action: "custom_selection_query", queryText, selectedText, pageTitle: tab.title, pageURL: tab.url, outputMode: "popup", tabId: tab.id },
-      window.close
-    );
+    send({ action: "custom_selection_query", queryText, selectedText, pageTitle: tab.title, pageURL: tab.url, outputMode: "popup", tabId: tab.id });
   });
 }

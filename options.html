@@ -115,6 +115,27 @@
   <textarea id="customQuerySystemPrompt" style="width:500px;height:50px;margin-top:3px" placeholder="e.g. You are a helpful assistant."></textarea>
 </div>
 
+<!-- ── Sync ───────────────────────────────────────────────────────── -->
+<h2>Sync</h2>
+<div class="behavior-row">
+  <label>
+    <input type="checkbox" id="syncEnabled">
+    Sync settings to your other computers
+    <span style="color:#888">(uses the browser's built-in account sync)</span>
+  </label>
+</div>
+<div class="behavior-row">
+  <label>
+    <input type="checkbox" id="syncIncludeKeys">
+    Include API keys in sync
+  </label>
+  <div style="color:#888;font-size:11px;margin:2px 0 0 22px;max-width:600px">
+    Off by default. Prompts, CSS and behaviour sync either way; API keys stay on this
+    computer unless you tick this. Anything synced is uploaded to your browser account,
+    so it leaves this machine.
+  </div>
+</div>
+
 <!-- ── Prompts ────────────────────────────────────────────────────── -->
 <br>
 <p style="margin:4px 0">
