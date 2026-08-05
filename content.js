@@ -89,6 +89,18 @@ function closeMenuKeyHandler() {
 // host's computed values leaves the shadow tree nothing to inherit. What the
 // host is actually meant to look like is then re-applied at the same priority.
 //
+// Only the host needs any of this. Nothing inside the shadow tree is important,
+// and nothing needs to be — page selectors cannot reach in there. The host is
+// the one element that is not inside it. Importance is what makes the host's
+// styling hold, because a page's own !important rule outranks every normal
+// declaration regardless of where it comes from.
+//
+// `:host { … !important }` in the stylesheet would hold just as well — for
+// important declarations the inner tree outranks even the style attribute. The
+// style attribute is used instead because the floating button writes left, top
+// and display at runtime; those land here, and a rule in the sheet would outrank
+// them, leaving the button unable to move or appear.
+//
 // Everything written to a hardened host afterwards has to be important too, or
 // the `all: initial` in the same declaration block wins over it.
 const setImportant = (el, prop, value) => el.style.setProperty(prop, value, "important");
