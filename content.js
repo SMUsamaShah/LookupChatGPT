@@ -69,6 +69,58 @@ function closeMenuKeyHandler() {
   _menuKeyHandler = null;
 }
 
+// ── Shadow host hardening ─────────────────────────────────────────────────────
+//
+// A shadow root stops page *selectors* reaching inside it. It does not stop two
+// other routes in, and page CSS regularly takes both:
+//
+//   1. The host is an ordinary element sitting in the page's DOM, so page rules
+//      match it like any other. In the cascade a normal declaration from the
+//      outer tree beats a normal :host rule from the inner one whatever the
+//      specificity, so a page's `div { position: relative }` is enough to
+//      override the panel's own `position: fixed` and drop it into the page flow.
+//   2. Inherited properties cross the boundary regardless of selectors. Anything
+//      the panel does not set for itself — letter-spacing, text-transform,
+//      word-spacing, font-style — arrives from the host's computed style, which
+//      is to say from the page.
+//
+// Setting `all: initial` in the host's own style attribute closes both at once:
+// an inline important declaration outranks any page rule, and resetting the
+// host's computed values leaves the shadow tree nothing to inherit. What the
+// host is actually meant to look like is then re-applied at the same priority.
+//
+// Everything written to a hardened host afterwards has to be important too, or
+// the `all: initial` in the same declaration block wins over it.
+const setImportant = (el, prop, value) => el.style.setProperty(prop, value, "important");
+
+function hardenShadowHost(host, declarations) {
+  setImportant(host, "all", "initial");
+  // `all` deliberately excludes these two, so they need saying explicitly.
+  setImportant(host, "direction", "ltr");
+  setImportant(host, "unicode-bidi", "normal");
+  setImportant(host, "display", "block");
+  for (const [prop, value] of declarations) setImportant(host, prop, value);
+}
+
+const PANEL_HOST_FALLBACK = [
+  ["position", "fixed"], ["top", "10px"], ["left", "10px"],
+  ["z-index", "999999"], ["max-width", "60vw"],
+];
+
+// The :host declarations out of a stylesheet, read back through the CSSOM rather
+// than parsed by hand. These are what the host is meant to look like, and they
+// have to move to the style attribute to survive a hostile page.
+function hostDeclarations(styleEl) {
+  const out = [];
+  let rules;
+  try { rules = styleEl.sheet?.cssRules; } catch { return out; }  // cross-origin sheets throw
+  for (const rule of rules || []) {
+    if (rule.selectorText !== ":host") continue;
+    for (const prop of rule.style) out.push([prop, rule.style.getPropertyValue(prop)]);
+  }
+  return out;
+}
+
 // True for the floating button and the result panel — the extension's own UI,
 // which selection handling must leave alone.
 const inExtensionUI = (target, selector = "#lcgpt-float-btn, #lcgpt-result-container") =>
@@ -152,11 +204,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   if (!btn) {
     btn = document.createElement("div");
     btn.id = "lcgpt-float-btn";
-    // Only layout/visibility properties live on the host; visual styles go in
-    // the shadow so page CSS (including !important) cannot reach them.
-    btn.style.cssText = "position:fixed;z-index:999998;display:none";
     document.body.appendChild(btn);
     shadow = btn.attachShadow({ mode: "open" });
+    // Only layout and visibility live on the host; the look is in the shadow.
+    hardenShadowHost(btn, [["position", "fixed"], ["z-index", "999998"], ["display", "none"]]);
     const style = document.createElement("style");
     style.textContent = `
       #lcgpt-float-wrap {
@@ -344,7 +395,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     x: Math.round(rect.left + window.scrollX),
     y: Math.round(rect.top  + window.scrollY) - 36,
   };
-  btn.style.display = "block";
+  setImportant(btn, "display", "block");
   updateFloatingButtonPosition();
 }
 
@@ -356,15 +407,15 @@ function updateFloatingButtonPosition() {
   const y = _buttonPagePos.y - window.scrollY;
   // Hide once the anchor has scrolled well out of view
   if (y < -50 || y > window.innerHeight + 50) { hideFloatingButton(); return; }
-  btn.style.left = `${x}px`;
-  btn.style.top  = `${Math.max(4, y)}px`;
+  setImportant(btn, "left", `${x}px`);
+  setImportant(btn, "top",  `${Math.max(4, y)}px`);
 }
 
 function hideFloatingButton() {
   _menuOpen = false;
   closeMenuKeyHandler();
   const btn = document.getElementById("lcgpt-float-btn");
-  if (btn) btn.style.display = "none";
+  if (btn) setImportant(btn, "display", "none");
   _buttonPagePos = null;
 }
 
@@ -429,6 +480,11 @@ function resultShadowRoot(lookup) {
   style.textContent = (lookup.options?.defaultPopupStyle || "")
     .replace(/#lcgpt-result-container\b/g, ":host");
   shadow.appendChild(style);
+  // The :host block stays in the sheet, but it is the copy on the style
+  // attribute that actually holds against the page. The fallbacks go on first so
+  // a stylesheet with no :host rules of its own still floats above the page
+  // instead of landing in its flow; anything it does declare wins over them.
+  hardenShadowHost(host, [...PANEL_HOST_FALLBACK, ...hostDeclarations(style)]);
   return shadow;
 }
 
