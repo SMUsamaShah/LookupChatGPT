@@ -2,179 +2,429 @@
 <html>
 <head>
 <meta charset="utf-8">
+<title>Lookup via ChatGPT — Settings</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 13px; margin: 20px; max-width: 1400px; }
-  h1   { font-size: 18px; }
-  h2   { font-size: 14px; margin-top: 20px; margin-bottom: 6px; }
+  :root {
+    color-scheme: light dark;
+    --bg:        #f6f7f9;
+    --card:      #ffffff;
+    --ink:       #1b1d21;
+    --ink-soft:  #5b6169;
+    --ink-faint: #8b9198;
+    --line:      #e0e3e7;
+    --line-soft: #eceef1;
+    --accent:    #3060c0;
+    --accent-in: #ffffff;
+    --field:     #ffffff;
+    --field-line:#ccd1d7;
+    --danger:    #b3261e;
+    --shadow:    0 1px 2px rgba(16, 20, 28, .06), 0 1px 8px rgba(16, 20, 28, .04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #16181c;
+      --card:      #1e2126;
+      --ink:       #e6e8ea;
+      --ink-soft:  #a3a9b1;
+      --ink-faint: #7b828b;
+      --line:      #2e333a;
+      --line-soft: #262a30;
+      --accent:    #6f9bf0;
+      --accent-in: #10131a;
+      --field:     #14171b;
+      --field-line:#3a4048;
+      --danger:    #f2837c;
+      --shadow:    0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
 
-  /* Providers table */
-  #providersTable { border-collapse: collapse; margin-bottom: 8px; }
-  #providersTable td, #providersTable th { padding: 4px 8px; }
-  #providersTable th { text-align: left; font-weight: normal; color: #555; }
-  #providersTable input[type="password"],
-  #providersTable input[type="text"] { width: 280px; }
+  * { box-sizing: border-box; }
 
-  /* Prompts table */
-  #promptTable { border-collapse: collapse; width: 100%; }
-  #promptTable th, #promptTable td { border: 1px solid #ccc; padding: 3px 5px; vertical-align: top; }
-  #promptTable th { background: #f5f5f5; font-weight: normal; font-size: 11px; white-space: nowrap; }
-  #promptTable input[type="text"],
-  #promptTable input[type="number"],
-  #promptTable select,
-  #promptTable textarea { width: 100%; box-sizing: border-box; }
-  #promptTable input[type="number"] { width: 48px; }
-  #promptTable [contenteditable] { white-space: pre-wrap; min-height: 2em; }
+  body {
+    margin: 0;
+    padding: 0 0 88px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
 
-  details { margin: 6px 0; }
-  details summary { cursor: pointer; color: #333; }
-  textarea { font-family: monospace; font-size: 12px; }
-  #defaultPopupStyle { width: 400px; height: 120px; }
-  .behavior-row { margin: 6px 0; }
-  code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; }
-  #savePrompts, #addNewPrompt { margin-top: 8px; padding: 4px 12px; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 32px 24px 0; }
+
+  header { margin-bottom: 22px; }
+  header h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+  header p  { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    margin-bottom: 18px;
+  }
+  .card > h2 {
+    margin: 0 0 3px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .01em;
+  }
+  .card > h2 + .hint { margin: 0 0 16px; }
+
+  .hint { color: var(--ink-soft); font-size: 12.5px; margin: 0 0 10px; }
+  .hint a { color: var(--accent); }
+
+  /* ── Form controls ─────────────────────────────────────────────── */
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    font: inherit;
+    color: var(--ink);
+    background: var(--field);
+    border: 1px solid var(--field-line);
+    border-radius: 6px;
+    padding: 6px 9px;
+  }
+  input:focus, select:focus, textarea:focus,
+  [contenteditable]:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  select { padding-right: 26px; }
+  label { cursor: pointer; }
+  input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0 7px 0 0; vertical-align: -2px; }
+
+  button {
+    font: inherit;
+    color: var(--ink);
+    background: var(--card);
+    border: 1px solid var(--field-line);
+    border-radius: 6px;
+    padding: 6px 13px;
+    cursor: pointer;
+  }
+  button:hover  { border-color: var(--ink-faint); }
+  button:active { transform: translateY(1px); }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-in);
+    font-weight: 550;
+    padding: 8px 20px;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+
+  /* ── Providers ─────────────────────────────────────────────────── */
+  #providersTable { border-collapse: collapse; width: 100%; }
+  #providersTable th {
+    text-align: left; font-weight: 500; font-size: 12px; color: var(--ink-soft);
+    padding: 0 12px 8px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  #providersTable td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  #providersTable tr:last-child td { border-bottom: 0; padding-bottom: 0; }
+  #providersTable td:first-child { white-space: nowrap; }
+  #providersTable input { width: 100%; min-width: 210px; }
+  .provider-name { font-weight: 500; }
+  .provider-links { font-size: 11.5px; color: var(--ink-faint); margin-top: 1px; }
+  .provider-links a { color: var(--ink-faint); }
+  .provider-links a:hover { color: var(--accent); }
+
+  .field-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+  .field-row > label { color: var(--ink-soft); font-size: 13px; }
+
+  /* ── Behaviour / sync rows ─────────────────────────────────────── */
+  .behavior-row { margin: 0 0 14px; }
+  .behavior-row:last-child { margin-bottom: 0; }
+  .behavior-row > label { font-size: 13.5px; }
+  .row-note { color: var(--ink-faint); font-size: 12px; margin: 4px 0 0 22px; max-width: 62ch; }
+  .stack-label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 5px; }
+  #customQuerySystemPrompt { width: 100%; max-width: 640px; height: 62px; }
+  #selectionButtonPrompt { max-width: 300px; }
+
+  details summary {
+    cursor: pointer; color: var(--ink-soft); font-size: 13px;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸"; font-size: 10px; color: var(--ink-faint); }
+  details[open] summary::before { content: "▾"; }
+  details summary:hover { color: var(--ink); }
+  .details-body { padding: 14px 0 2px; }
+  #defaultPopupStyle { width: 100%; max-width: 620px; height: 190px; display: block; margin-bottom: 10px; }
+
+  /* ── Prompts table ─────────────────────────────────────────────── */
+  .prompts-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .table-scroll {
+    margin: 14px -22px 0;
+    padding: 0 22px;
+    overflow-x: auto;
+  }
+  #promptTable { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; }
+  #promptTable th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--card);
+    text-align: left; font-weight: 500; font-size: 11.5px; color: var(--ink-soft);
+    white-space: nowrap; padding: 8px 8px; border-bottom: 1px solid var(--line);
+  }
+  #promptTable td {
+    padding: 7px 8px; vertical-align: top;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  #promptTable tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  #promptTable input[type="text"], #promptTable select { width: 100%; padding: 4px 7px; font-size: 13px; }
+  #promptTable input[type="number"] { width: 56px; padding: 4px 6px; font-size: 13px; }
+  #promptTable [contenteditable] {
+    white-space: pre-wrap;
+    min-height: 2.2em;
+    background: var(--field);
+    border: 1px solid var(--field-line);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  #promptTable .extraParams, #promptTable .popupStyle {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  /* Row controls: move up / down / delete */
+  #promptTable .moveUpButton, #promptTable .moveDownButton, #promptTable .deleteButton {
+    padding: 2px 7px; font-size: 12px; line-height: 1.4;
+    color: var(--ink-faint); background: none; border-color: transparent;
+  }
+  #promptTable .moveUpButton:hover, #promptTable .moveDownButton:hover {
+    color: var(--ink); border-color: var(--field-line);
+  }
+  #promptTable .deleteButton:hover { color: var(--danger); border-color: var(--danger); }
+
+  .table-actions { display: flex; gap: 9px; margin-top: 16px; }
+
+  code {
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* ── Sticky save bar ───────────────────────────────────────────── */
+  .actionbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    padding: 12px 24px;
+  }
+  .actionbar-inner {
+    max-width: 1180px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+  }
+  .actionbar .hint { margin: 0; margin-right: auto; }
 </style>
 </head>
 <body>
 
-<h1>Settings</h1>
+<div class="page">
+
+<header>
+  <h1>Lookup via ChatGPT</h1>
+  <p>Look up selected text with your own prompts.</p>
+</header>
 
 <!-- ── Providers ─────────────────────────────────────────────────── -->
-<h2>Providers</h2>
-<table id="providersTable">
-  <thead>
-    <tr>
-      <th>Provider</th>
-      <th>API Key</th>
-      <th>Default model <span style="color:#999;font-size:11px">(optional — leave blank to use the built-in default)</span></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>OpenAI<br><small><a href="https://platform.openai.com/api-keys" target="_blank">API Keys</a> · <a href="https://platform.openai.com/signup" target="_blank">Sign Up</a></small></td>
-      <td><input type="password" id="openai-token"  placeholder="sk-…"></td>
-      <td><input type="text"     id="openai-model"  placeholder="gpt-4o-mini"></td>
-    </tr>
-    <tr>
-      <td>Anthropic Claude<br><small><a href="https://console.anthropic.com/settings/keys" target="_blank">API Keys</a> · <a href="https://console.anthropic.com/" target="_blank">Sign Up</a></small></td>
-      <td><input type="password" id="anthropic-token"  placeholder="sk-ant-…"></td>
-      <td><input type="text"     id="anthropic-model"  placeholder="claude-3-5-haiku-20241022"></td>
-    </tr>
-    <tr>
-      <td>Google Gemini<br><small><a href="https://aistudio.google.com/app/apikey" target="_blank">API Keys</a> · <a href="https://aistudio.google.com/" target="_blank">Sign Up</a></small></td>
-      <td><input type="password" id="google-token"  placeholder="AIza…"></td>
-      <td><input type="text"     id="google-model"  placeholder="gemini-1.5-flash"></td>
-    </tr>
-    <tr>
-      <td>OpenRouter<br><small><a href="https://openrouter.ai/settings/keys" target="_blank">API Keys</a> · <a href="https://openrouter.ai/" target="_blank">Sign Up</a></small></td>
-      <td><input type="password" id="openrouter-token"  placeholder="sk-or-…"></td>
-      <td><input type="text"     id="openrouter-model"  placeholder="openai/gpt-4o-mini"></td>
-    </tr>
-  </tbody>
-</table>
-<label for="defaultProvider">Default provider:</label>
-<select id="defaultProvider">
-  <option value="openai">OpenAI</option>
-  <option value="anthropic">Anthropic Claude</option>
-  <option value="google">Google Gemini</option>
-  <option value="openrouter">OpenRouter</option>
-</select>
+<section class="card">
+  <h2>Providers</h2>
+  <p class="hint">You only need a key for the provider you actually use.</p>
+  <table id="providersTable">
+    <thead>
+      <tr>
+        <th>Provider</th>
+        <th>API key</th>
+        <th>Default model <span style="font-weight:400;color:var(--ink-faint)">(blank = built-in default)</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="provider-name">OpenAI</div>
+          <div class="provider-links"><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get a key</a> · <a href="https://platform.openai.com/signup" target="_blank" rel="noopener">Sign up</a></div>
+        </td>
+        <td><input type="password" id="openai-token" placeholder="sk-…" autocomplete="off" spellcheck="false"></td>
+        <td><input type="text" id="openai-model" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false"></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="provider-name">Anthropic Claude</div>
+          <div class="provider-links"><a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key</a> · <a href="https://console.anthropic.com/" target="_blank" rel="noopener">Sign up</a></div>
+        </td>
+        <td><input type="password" id="anthropic-token" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"></td>
+        <td><input type="text" id="anthropic-model" placeholder="claude-3-5-haiku-20241022" autocomplete="off" spellcheck="false"></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="provider-name">Google Gemini</div>
+          <div class="provider-links"><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get a key</a> · <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Sign up</a></div>
+        </td>
+        <td><input type="password" id="google-token" placeholder="AIza…" autocomplete="off" spellcheck="false"></td>
+        <td><input type="text" id="google-model" placeholder="gemini-1.5-flash" autocomplete="off" spellcheck="false"></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="provider-name">OpenRouter</div>
+          <div class="provider-links"><a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">Get a key</a> · <a href="https://openrouter.ai/" target="_blank" rel="noopener">Sign up</a></div>
+        </td>
+        <td><input type="password" id="openrouter-token" placeholder="sk-or-…" autocomplete="off" spellcheck="false"></td>
+        <td><input type="text" id="openrouter-model" placeholder="openai/gpt-4o-mini" autocomplete="off" spellcheck="false"></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="field-row">
+    <label for="defaultProvider">Default provider</label>
+    <select id="defaultProvider">
+      <option value="openai">OpenAI</option>
+      <option value="anthropic">Anthropic Claude</option>
+      <option value="google">Google Gemini</option>
+      <option value="openrouter">OpenRouter</option>
+    </select>
+    <span class="hint" style="margin:0">Used by any prompt without its own provider override.</span>
+  </div>
+</section>
 
-<br><br>
+<!-- ── Behaviour ─────────────────────────────────────────────────── -->
+<section class="card">
+  <h2>Behaviour</h2>
+  <p class="hint">How results appear, and how you launch them.</p>
 
-<details>
-  <summary>Popup appearance (CSS)</summary>
-  <br>
-  <textarea id="defaultPopupStyle"></textarea>
-  <br>
-  <button id="resetCSS" style="margin-top:4px">Reset to default</button>
-</details>
+  <div class="behavior-row">
+    <label>
+      <input type="checkbox" id="selectionButtonEnabled">
+      Show a floating <b>✦</b> button when text is selected
+    </label>
+    <div class="row-note">
+      Off by default. Turning it on asks for permission to run on the pages you visit —
+      without it, the extension only touches a page when you use the right-click menu or
+      the toolbar button.
+    </div>
+  </div>
 
-<!-- ── Behavior ───────────────────────────────────────────────────── -->
-<h2>Behavior</h2>
-<div class="behavior-row">
-  <label>
-    <input type="checkbox" id="selectionButtonEnabled">
-    Show a floating <b>✦</b> button when text is selected
-    <span style="color:#888">(disabled by default — opt in here)</span>
-  </label>
-</div>
-<div class="behavior-row" id="selectionButtonPromptRow">
-  Default prompt for the floating button:
-  <select id="selectionButtonPrompt"><!-- populated dynamically by options.js --></select>
-</div>
-<div class="behavior-row">
-  Custom query output mode:
-  <select id="customQueryOutputMode">
-    <option value="auto">Auto-detect (replace if editable field, popup otherwise)</option>
-    <option value="popup">Always show popup</option>
-    <option value="replace">Always replace selected text</option>
-  </select>
-</div>
-<div class="behavior-row">
-  <label for="customQuerySystemPrompt">Custom query system prompt <span style="color:#999;font-size:11px">(optional — leave blank for no system message)</span></label><br>
-  <textarea id="customQuerySystemPrompt" style="width:500px;height:50px;margin-top:3px" placeholder="e.g. You are a helpful assistant."></textarea>
+  <div class="behavior-row" id="selectionButtonPromptRow">
+    <label class="stack-label" for="selectionButtonPrompt">Default prompt for the floating button</label>
+    <select id="selectionButtonPrompt"><!-- populated by options.js --></select>
+  </div>
+
+  <div class="behavior-row">
+    <label class="stack-label" for="customQueryOutputMode">Where a typed-in question puts its answer</label>
+    <select id="customQueryOutputMode">
+      <option value="auto">Auto — replace the text if it is in an editable field, otherwise show a popup</option>
+      <option value="popup">Always show a popup</option>
+      <option value="replace">Always replace the selected text</option>
+    </select>
+    <div class="row-note">
+      Applies only to questions typed straight into the ✦ button or the toolbar popup.
+      Saved prompts each carry their own setting in the Output column below.
+    </div>
+  </div>
+
+  <div class="behavior-row">
+    <label class="stack-label" for="customQuerySystemPrompt">
+      System prompt for typed-in questions
+      <span style="color:var(--ink-faint)">— optional, blank sends no system message</span>
+    </label>
+    <textarea id="customQuerySystemPrompt" placeholder="e.g. You are a helpful assistant." spellcheck="false"></textarea>
+  </div>
+</section>
+
+<!-- ── Sync ──────────────────────────────────────────────────────── -->
+<section class="card">
+  <h2>Sync</h2>
+  <p class="hint">Carry your setup to your other computers using the browser's own account sync.</p>
+
+  <div class="behavior-row">
+    <label>
+      <input type="checkbox" id="syncEnabled">
+      Sync settings to your other computers
+    </label>
+  </div>
+  <div class="behavior-row">
+    <label>
+      <input type="checkbox" id="syncIncludeKeys">
+      Include API keys in sync
+    </label>
+    <div class="row-note">
+      Off by default. Prompts, CSS and behaviour sync either way; API keys stay on this
+      computer unless you tick this. Anything synced is uploaded to your browser account,
+      so it leaves this machine.
+    </div>
+  </div>
+</section>
+
+<!-- ── Appearance ────────────────────────────────────────────────── -->
+<section class="card">
+  <details>
+    <summary>Result panel appearance (CSS)</summary>
+    <div class="details-body">
+      <p class="hint">
+        Styles the panel your results appear in. <code>:host</code> is the panel's outer box —
+        position it, size it, set the font there.
+      </p>
+      <textarea id="defaultPopupStyle" spellcheck="false"></textarea>
+      <button id="resetCSS">Reset to default</button>
+    </div>
+  </details>
+</section>
+
+<!-- ── Prompts ───────────────────────────────────────────────────── -->
+<section class="card">
+  <div class="prompts-head">
+    <div>
+      <h2>Prompts</h2>
+      <p class="hint" style="margin-bottom:0">
+        Each one becomes a right-click menu entry. Use
+        <code>VAR_SELECTED_TEXT</code> <code>VAR_PAGE_TITLE</code> <code>VAR_PAGE_URL</code>
+        anywhere in a prompt.
+      </p>
+    </div>
+    <label style="font-size:13px;color:var(--ink-soft);white-space:nowrap">
+      <input type="checkbox" id="toggleAdvancedColumns">
+      Show advanced columns
+    </label>
+  </div>
+
+  <div class="table-scroll">
+    <table id="promptTable">
+      <thead>
+        <tr>
+          <th style="width:56px"></th>
+          <th style="width:34px">On</th>
+          <th style="width:132px">Output</th>
+          <th style="width:76px">Follow-up</th>
+          <th style="width:150px">Title</th>
+          <th>System prompt</th>
+          <th class="advanced" style="width:110px">Context</th>
+          <th class="advanced" style="width:150px">User message</th>
+          <th class="advanced" style="width:130px">Provider</th>
+          <th class="advanced" style="width:130px">Model override</th>
+          <th class="advanced" style="width:150px">Extra params (JSON)</th>
+          <th class="advanced" style="width:150px">Panel style (CSS)</th>
+          <th style="width:34px"></th>
+        </tr>
+      </thead>
+      <tbody><!-- rows added by options.js --></tbody>
+    </table>
+  </div>
+
+  <div class="table-actions">
+    <button id="addNewPrompt">Add prompt</button>
+    <button id="resetPrompts">Reset to defaults</button>
+  </div>
+</section>
+
 </div>
 
-<!-- ── Sync ───────────────────────────────────────────────────────── -->
-<h2>Sync</h2>
-<div class="behavior-row">
-  <label>
-    <input type="checkbox" id="syncEnabled">
-    Sync settings to your other computers
-    <span style="color:#888">(uses the browser's built-in account sync)</span>
-  </label>
-</div>
-<div class="behavior-row">
-  <label>
-    <input type="checkbox" id="syncIncludeKeys">
-    Include API keys in sync
-  </label>
-  <div style="color:#888;font-size:11px;margin:2px 0 0 22px;max-width:600px">
-    Off by default. Prompts, CSS and behaviour sync either way; API keys stay on this
-    computer unless you tick this. Anything synced is uploaded to your browser account,
-    so it leaves this machine.
+<div class="actionbar">
+  <div class="actionbar-inner">
+    <p class="hint">Changes take effect once saved.</p>
+    <button id="savePrompts" class="primary">Save</button>
   </div>
 </div>
-
-<!-- ── Prompts ────────────────────────────────────────────────────── -->
-<br>
-<p style="margin:4px 0">
-  Variables available in prompts:
-  <code>VAR_SELECTED_TEXT</code> &nbsp;
-  <code>VAR_PAGE_TITLE</code> &nbsp;
-  <code>VAR_PAGE_URL</code>
-</p>
-
-<label>
-  <input type="checkbox" id="toggleAdvancedColumns">
-  Show advanced columns
-</label>
-
-<h2>Prompts</h2>
-<table id="promptTable">
-  <thead>
-    <tr>
-      <th style="width:2%"></th>
-      <th style="width:2%">On</th>
-      <th style="width:8%">Output</th>
-      <th style="width:4%">Follow-up<br>rounds</th>
-      <th style="width:12%">Title</th>
-      <th style="width:35%">System Prompt</th>
-      <th class="advanced" style="width:10%">Context</th>
-      <th class="advanced" style="width:10%">User Message</th>
-      <th class="advanced" style="width:7%">Provider</th>
-      <th class="advanced" style="width:8%">Model override</th>
-      <th class="advanced" style="width:10%">Extra Params (JSON)</th>
-      <th class="advanced" style="width:10%">Result Panel Style (CSS)</th>
-      <th style="width:4%"></th>
-    </tr>
-  </thead>
-  <tbody><!-- rows added by options.js --></tbody>
-</table>
-
-<button id="addNewPrompt">Add prompt</button>
-<button id="resetPrompts">Reset to defaults</button>
-<button id="savePrompts">Save</button>
 
 <script src="defaults.js"></script>
 <script src="providers.js"></script>
