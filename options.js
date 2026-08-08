@@ -55,9 +55,8 @@ $("selectionButtonEnabled").addEventListener("change", (e) => {
     // silently cannot work.
     checkbox.checked = false;
     persistSelectionButtonEnabled(false);
-    alert("The floating button needs permission to run on the pages you visit.\n\n" +
-          "Without it the extension only acts on the page when you use the right-click " +
-          "menu or the toolbar button.");
+    alert("The floating button needs permission to run on every page.\n\n" +
+          "Without it, you can still use the right-click menu and the toolbar button.");
   });
 });
 
@@ -158,7 +157,7 @@ function populatePromptTable(prompts, defaultPromptId = 0) {
 }
 
 function resetPrompts() {
-  if (!confirm("Reset all prompts to the extension defaults?\n\nClick Save to make it permanent.")) return;
+  if (!confirm("Reset all prompts to the defaults?\n\nNothing is kept until you click Save.")) return;
   populatePromptTable(makeDefaultPrompts());
 }
 
@@ -307,49 +306,49 @@ function appendPromptRow(prompt) {
   const row = el("tr", { className: "promptRow" });
 
   row.appendChild(cell([
-    el("button", { className: "moveUpButton",   title: "Move up",   textContent: "^" }),
-    el("button", { className: "moveDownButton", title: "Move down", textContent: "v" }),
+    el("button", { className: "moveUpButton",   title: "Move this prompt up",   textContent: "^" }),
+    el("button", { className: "moveDownButton", title: "Move this prompt down", textContent: "v" }),
   ]));
 
   row.appendChild(cell(el("input", {
-    type: "checkbox", className: "enabled", checked: Boolean(prompt.enabled), title: "Enable this prompt",
+    type: "checkbox", className: "enabled", checked: Boolean(prompt.enabled), title: "Turn this prompt on or off",
   }), { align: "center" }));
 
   row.appendChild(selectCell("outputMode", [
-    ["popup",   "Show popup"],
-    ["replace", "Replace selection"],
+    ["popup",   "Show a popup"],
+    ["replace", "Replace the text"],
   ], prompt.outputMode === "replace" ? "replace" : "popup"));
 
   row.appendChild(cell(el("input", {
     type: "number", className: "followUpRounds", value: String(prompt.followUpRounds ?? 1),
     min: "0", max: "20",
-    title: "0 = hide follow-up box | 1 = last exchange only (default) | N = last N exchanges",
+    title: "How many past questions to remember.\n0 = no follow-up box\n1 = the last one only (default)\n5 = the last five",
   }), { align: "center" }));
 
   row.appendChild(editableCell("title",   prompt.title));
   row.appendChild(editableCell("content", prompt.content));
 
   row.appendChild(selectCell("context", [
-    ["selection", "Selection"],
-    ["page",      "Page"],
+    ["selection", "Selected text"],
+    ["page",      "Whole page"],
   ], prompt.context === "page" ? "page" : "selection", { advanced: true }));
 
   row.appendChild(editableCell("userContent", prompt.userContent, { advanced: true }));
 
   row.appendChild(selectCell("providerOverride", [
-    ["", "— global default —"],
+    ["", "Use the default"],
     ...Object.entries(PROVIDERS).map(([key, p]) => [key, p.label]),
   ], prompt.providerOverride || "", { advanced: true }));
 
   row.appendChild(cell(el("input", {
     type: "text", className: "modelOverride", value: prompt.modelOverride || "",
-    placeholder: "(provider default)",
+    placeholder: "Use the default",
   }), { advanced: true }));
 
   row.appendChild(editableCell("extraParams", prompt.extraParams, { advanced: true }));
   row.appendChild(editableCell("popupStyle",  prompt.popupStyle,  { advanced: true }));
 
-  row.appendChild(cell(el("button", { className: "deleteButton", textContent: "x" })));
+  row.appendChild(cell(el("button", { className: "deleteButton", title: "Delete this prompt", textContent: "x" })));
 
   document.querySelector("#promptTable tbody").appendChild(row);
   refreshSelectionButtonPrompts();

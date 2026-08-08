@@ -226,19 +226,19 @@
 
 <header>
   <h1>Lookup via ChatGPT</h1>
-  <p>Look up selected text with your own prompts.</p>
+  <p>Select text on any page and ask about it.</p>
 </header>
 
 <!-- ── Providers ─────────────────────────────────────────────────── -->
 <section class="card">
   <h2>Providers</h2>
-  <p class="hint">You only need a key for the provider you actually use.</p>
+  <p class="hint">You only need a key for the provider you use.</p>
   <table id="providersTable">
     <thead>
       <tr>
         <th>Provider</th>
         <th>API key</th>
-        <th>Default model <span style="font-weight:400;color:var(--ink-faint)">(blank = built-in default)</span></th>
+        <th>Model <span style="font-weight:400;color:var(--ink-faint)">(leave empty to use the default)</span></th>
       </tr>
     </thead>
     <tbody>
@@ -284,14 +284,14 @@
       <option value="google">Google Gemini</option>
       <option value="openrouter">OpenRouter</option>
     </select>
-    <span class="hint" style="margin:0">Used by any prompt without its own provider override.</span>
+    <span class="hint" style="margin:0">Prompts use this unless they choose their own.</span>
   </div>
 </section>
 
 <!-- ── Behaviour ─────────────────────────────────────────────────── -->
 <section class="card">
-  <h2>Behaviour</h2>
-  <p class="hint">How results appear, and how you launch them.</p>
+  <h2>Behavior</h2>
+  <p class="hint">Where answers appear, and how you ask for them.</p>
 
   <div class="behavior-row">
     <label>
@@ -299,9 +299,8 @@
       Show a floating <b>✦</b> button when text is selected
     </label>
     <div class="row-note">
-      Off by default. Turning it on asks for permission to run on the pages you visit —
-      without it, the extension only touches a page when you use the right-click menu or
-      the toolbar button.
+      Off by default. The button needs permission to run on every page.
+      Without it, you can still use the right-click menu and the toolbar button.
     </div>
   </div>
 
@@ -311,22 +310,22 @@
   </div>
 
   <div class="behavior-row">
-    <label class="stack-label" for="customQueryOutputMode">Where a typed-in question puts its answer</label>
+    <label class="stack-label" for="customQueryOutputMode">Where to show the answer to a question you type</label>
     <select id="customQueryOutputMode">
-      <option value="auto">Auto — replace the text if it is in an editable field, otherwise show a popup</option>
+      <option value="auto">Auto: replace the text if you can edit it, else show a popup</option>
       <option value="popup">Always show a popup</option>
-      <option value="replace">Always replace the selected text</option>
+      <option value="replace">Always replace the text</option>
     </select>
     <div class="row-note">
-      Applies only to questions typed straight into the ✦ button or the toolbar popup.
-      Saved prompts each carry their own setting in the Output column below.
+      This is only for questions you type yourself. Saved prompts have their own
+      setting, in the Output column below.
     </div>
   </div>
 
   <div class="behavior-row">
     <label class="stack-label" for="customQuerySystemPrompt">
-      System prompt for typed-in questions
-      <span style="color:var(--ink-faint)">— optional, blank sends no system message</span>
+      System prompt for questions you type
+      <span style="color:var(--ink-faint)">(optional, leave empty to send none)</span>
     </label>
     <textarea id="customQuerySystemPrompt" placeholder="e.g. You are a helpful assistant." spellcheck="false"></textarea>
   </div>
@@ -335,12 +334,12 @@
 <!-- ── Sync ──────────────────────────────────────────────────────── -->
 <section class="card">
   <h2>Sync</h2>
-  <p class="hint">Carry your setup to your other computers using the browser's own account sync.</p>
+  <p class="hint">Copy your settings to your other computers, using your browser account.</p>
 
   <div class="behavior-row">
     <label>
       <input type="checkbox" id="syncEnabled">
-      Sync settings to your other computers
+      Copy my settings to my other computers
     </label>
   </div>
   <div class="behavior-row">
@@ -349,9 +348,8 @@
       Include API keys in sync
     </label>
     <div class="row-note">
-      Off by default. Prompts, CSS and behaviour sync either way; API keys stay on this
-      computer unless you tick this. Anything synced is uploaded to your browser account,
-      so it leaves this machine.
+      Off by default. Your prompts and settings are always copied. API keys are not,
+      unless you turn this on. Everything copied is uploaded to your browser account.
     </div>
   </div>
 </section>
@@ -359,11 +357,11 @@
 <!-- ── Appearance ────────────────────────────────────────────────── -->
 <section class="card">
   <details>
-    <summary>Result panel appearance (CSS)</summary>
+    <summary>Style of the answer box (CSS)</summary>
     <div class="details-body">
       <p class="hint">
-        Styles the panel your results appear in. <code>:host</code> is the panel's outer box —
-        position it, size it, set the font there.
+        This styles the box that shows the answer. <code>:host</code> is the outer box.
+        Set its position, size and font there.
       </p>
       <textarea id="defaultPopupStyle" spellcheck="false"></textarea>
       <button id="resetCSS">Reset to default</button>
@@ -377,9 +375,9 @@
     <div>
       <h2>Prompts</h2>
       <p class="hint" style="margin-bottom:0">
-        Each one becomes a right-click menu entry. Use
+        Each prompt becomes an item in the right-click menu. You can use
         <code>VAR_SELECTED_TEXT</code> <code>VAR_PAGE_TITLE</code> <code>VAR_PAGE_URL</code>
-        anywhere in a prompt.
+        inside any prompt.
       </p>
     </div>
     <label style="font-size:13px;color:var(--ink-soft);white-space:nowrap">
@@ -401,9 +399,9 @@
           <th class="advanced" style="width:110px">Context</th>
           <th class="advanced" style="width:150px">User message</th>
           <th class="advanced" style="width:130px">Provider</th>
-          <th class="advanced" style="width:130px">Model override</th>
-          <th class="advanced" style="width:150px">Extra params (JSON)</th>
-          <th class="advanced" style="width:150px">Panel style (CSS)</th>
+          <th class="advanced" style="width:130px">Model</th>
+          <th class="advanced" style="width:150px">Extra settings (JSON)</th>
+          <th class="advanced" style="width:150px">Box style (CSS)</th>
           <th style="width:34px"></th>
         </tr>
       </thead>
@@ -421,7 +419,7 @@
 
 <div class="actionbar">
   <div class="actionbar-inner">
-    <p class="hint">Changes take effect once saved.</p>
+    <p class="hint">Your changes are only kept when you click Save.</p>
     <button id="savePrompts" class="primary">Save</button>
   </div>
 </div>
