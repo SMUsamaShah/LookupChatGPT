@@ -6,10 +6,9 @@ extension with manifest.json at its root. A .crx is only for self-hosted
 distribution and neither store accepts one, so ZIP is all this produces.
 
 The file list is derived from the manifest plus the <script>/<link> tags of any
-HTML the manifest points at. Nothing is hard-coded, so adding a file to the
-extension automatically includes it in the package -- which is what the old
-pack_*.bat scripts got wrong: they still listed popup.js and button_popup.*
-long after those were deleted, and omitted content.js entirely.
+HTML the manifest points at, so adding a file to the extension includes it in the
+package with nothing to remember. The one exception is INJECTED_AT_RUNTIME below,
+for files the manifest never names.
 
 Usage:
     python3 scripts/package.py --check                 # validate only

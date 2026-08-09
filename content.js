@@ -1,6 +1,7 @@
 // Content script.
 // Responsibilities:
-//   1. Display result dialogs (displayResult)
+//   1. Draw the result panel — pending first, then the answer (showPendingPanel,
+//      displayResult), or swap the answer into the selection in replace mode
 //   2. Show a floating ✦ button near text selections when the feature is enabled
 //
 // This script is NOT declared in the manifest. background.js injects it into a
@@ -18,9 +19,14 @@ if (window.__lcgptRunning) return;
 window.__lcgptRunning = true;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Both branches answer synchronously, so the listener need not return true.
+  // Every branch answers synchronously, so the listener need not return true.
+  if (message.action === "showPending") {
+    showPendingPanel(message.lookup);
+    sendResponse(true);
+  }
+
   if (message.action === "displayResult") {
-    displayResult(message.lookup);
+    displayResult(message.lookup, message.failed);
     // Acknowledge, or the port closes unanswered and sendMessageToTab treats it
     // as a delivery failure and retries — redrawing the panel each time.
     sendResponse(true);
@@ -39,7 +45,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 //
 // Disabled by default — the user opts in via Options → Behavior.
 
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Only the keys the floating button needs. Never chrome.storage.local.get(null):
+// that would pull the API keys into the page's content-script world for no reason.
+const FLOAT_BUTTON_KEYS = ["selectionButton", "promptData", "customQueryOutputMode"];
 
 let _cachedOptions        = null;  // invalidated whenever storage changes
 let _loadingOptions       = false; // prevents duplicate in-flight storage reads
@@ -50,13 +58,89 @@ let _capturedURL          = "";
 let _capturedEditable     = false; // whether the selection was inside an editable element
 let _suppressSelectionHide = false; // true while a mousedown inside the button is in flight
 let _menuOpen             = false;  // true while the floating-button dropdown is open
+let _menuKeyHandler       = null;   // the one live capture-phase key handler for the dropdown
+
+// The dropdown's key handler closes over that dropdown's search box and list, so
+// exactly one may be attached at a time. Every path that closes or rebuilds the
+// menu goes through here.
+function closeMenuKeyHandler() {
+  if (!_menuKeyHandler) return;
+  document.removeEventListener("keydown", _menuKeyHandler, true);
+  _menuKeyHandler = null;
+}
+
+// ── Shadow host hardening ─────────────────────────────────────────────────────
+//
+// A shadow root stops page *selectors* reaching inside it. It does not stop two
+// other routes in, and page CSS regularly takes both:
+//
+//   1. The host is an ordinary element sitting in the page's DOM, so page rules
+//      match it like any other. In the cascade a normal declaration from the
+//      outer tree beats a normal :host rule from the inner one whatever the
+//      specificity, so a page's `div { position: relative }` is enough to
+//      override the panel's own `position: fixed` and drop it into the page flow.
+//   2. Inherited properties cross the boundary regardless of selectors. Anything
+//      the panel does not set for itself — letter-spacing, text-transform,
+//      word-spacing, font-style — arrives from the host's computed style, which
+//      is to say from the page.
+//
+// Setting `all: initial` in the host's own style attribute closes both at once:
+// an inline important declaration outranks any page rule, and resetting the
+// host's computed values leaves the shadow tree nothing to inherit. What the
+// host is actually meant to look like is then re-applied at the same priority.
+//
+// Only the host needs any of this. Nothing inside the shadow tree is important,
+// and nothing needs to be — page selectors cannot reach in there. The host is
+// the one element that is not inside it. Importance is what makes the host's
+// styling hold, because a page's own !important rule outranks every normal
+// declaration regardless of where it comes from.
+//
+// `:host { … !important }` in the stylesheet would hold just as well — for
+// important declarations the inner tree outranks even the style attribute. The
+// style attribute is used instead because the floating button writes left, top
+// and display at runtime; those land here, and a rule in the sheet would outrank
+// them, leaving the button unable to move or appear.
+//
+// Everything written to a hardened host afterwards has to be important too, or
+// the `all: initial` in the same declaration block wins over it.
+const setImportant = (el, prop, value) => el.style.setProperty(prop, value, "important");
+
+function hardenShadowHost(host, declarations) {
+  setImportant(host, "all", "initial");
+  // `all` deliberately excludes these two, so they need saying explicitly.
+  setImportant(host, "direction", "ltr");
+  setImportant(host, "unicode-bidi", "normal");
+  setImportant(host, "display", "block");
+  for (const [prop, value] of declarations) setImportant(host, prop, value);
+}
+
+const PANEL_HOST_FALLBACK = [
+  ["position", "fixed"], ["top", "10px"], ["left", "10px"],
+  ["z-index", "999999"], ["max-width", "60vw"],
+];
+
+// The :host declarations out of a stylesheet, read back through the CSSOM rather
+// than parsed by hand. These are what the host is meant to look like, and they
+// have to move to the style attribute to survive a hostile page.
+function hostDeclarations(styleEl) {
+  const out = [];
+  let rules;
+  try { rules = styleEl.sheet?.cssRules; } catch { return out; }  // cross-origin sheets throw
+  for (const rule of rules || []) {
+    if (rule.selectorText !== ":host") continue;
+    for (const prop of rule.style) out.push([prop, rule.style.getPropertyValue(prop)]);
+  }
+  return out;
+}
+
+// True for the floating button and the result panel — the extension's own UI,
+// which selection handling must leave alone.
+const inExtensionUI = (target, selector = "#lcgpt-float-btn, #lcgpt-result-container") =>
+  Boolean(target?.closest?.(selector));
 
 function initFloatingButton() {
-  // Hover/active styles for the floating button are injected into its own
-  // shadow root in showFloatingButton — no document.head injection needed.
-
   document.addEventListener("mousedown", (e) => {
-    if (e.target.closest("#lcgpt-float-btn")) {
+    if (inExtensionUI(e.target, "#lcgpt-float-btn")) {
       // e.preventDefault() stops the browser from moving focus away from whatever
       // currently has it. This has two effects:
       //   1. A document text selection stays highlighted (browser only dims it on focus loss).
@@ -79,8 +163,8 @@ function initFloatingButton() {
     // typing can clear the document selection, but we must not hide the button —
     // the captured text (_capturedText) is already saved and is still valid.
     if (_menuOpen) return;
-    if (document.activeElement?.closest("#lcgpt-float-btn")) return;
-    if (!window.getSelection()?.toString().trim()) hideFloatingButton();
+    if (inExtensionUI(document.activeElement, "#lcgpt-float-btn")) return;
+    if (!selectedText()) hideFloatingButton();
   });
 
   document.addEventListener("scroll", updateFloatingButtonPosition, { passive: true });
@@ -91,27 +175,27 @@ function loadOptionsAndShow(sel) {
   if (_cachedOptions !== null) { maybeShowFloatingButton(sel, _cachedOptions); return; }
   if (_loadingOptions) return;
   _loadingOptions = true;
-  chrome.storage.local.get(null).then((opts) => {
+  chrome.storage.local.get(FLOAT_BUTTON_KEYS).then((opts) => {
     _cachedOptions  = opts;
     _loadingOptions = false;
     maybeShowFloatingButton(sel, opts);
   });
 }
 
+const selectedText = () => window.getSelection()?.toString().trim() || "";
+
 function onSelectionMouseUp(e) {
   _suppressSelectionHide = false;
-  if (e.target.closest("#lcgpt-float-btn, #lcgpt-result-container")) return;
-  const sel = window.getSelection();
-  if (!sel?.toString().trim()) { hideFloatingButton(); return; }
-  loadOptionsAndShow(sel);
+  if (inExtensionUI(e.target)) return;
+  if (!selectedText()) { hideFloatingButton(); return; }
+  loadOptionsAndShow(window.getSelection());
 }
 
+// Keyboard selection (shift+arrows, ctrl+A) shows the button but never hides it:
+// an ordinary keystroke that happens to clear the selection is not a dismissal.
 function onSelectionKeyUp(e) {
-  if (_menuOpen) return;
-  if (e.target.closest?.("#lcgpt-float-btn, #lcgpt-result-container")) return;
-  const sel = window.getSelection();
-  if (!sel?.toString().trim()) return;
-  loadOptionsAndShow(sel);
+  if (_menuOpen || inExtensionUI(e.target)) return;
+  if (selectedText()) loadOptionsAndShow(window.getSelection());
 }
 
 function maybeShowFloatingButton(sel, opts) {
@@ -132,11 +216,10 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
   if (!btn) {
     btn = document.createElement("div");
     btn.id = "lcgpt-float-btn";
-    // Only layout/visibility properties live on the host; visual styles go in
-    // the shadow so page CSS (including !important) cannot reach them.
-    btn.style.cssText = "position:fixed;z-index:999998;display:none";
     document.body.appendChild(btn);
     shadow = btn.attachShadow({ mode: "open" });
+    // Only layout and visibility live on the host; the look is in the shadow.
+    hardenShadowHost(btn, [["position", "fixed"], ["z-index", "999998"], ["display", "none"]]);
     const style = document.createElement("style");
     style.textContent = `
       #lcgpt-float-wrap {
@@ -178,17 +261,26 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   const wrap = shadow.getElementById("lcgpt-float-wrap");
 
-  const mainLabel  = defaultPrompt ? `✦ ${esc(defaultPrompt.title)}` : "✦ Ask…";
+  // Replacing the markup below detaches any open menu, so its key handler goes too.
+  closeMenuKeyHandler();
+  _menuOpen = false;
 
   wrap.innerHTML = `
-    <button id="lcgpt-float-main">${mainLabel}</button>
+    <button id="lcgpt-float-main"></button>
     <button id="lcgpt-float-arrow" title="Choose prompt">▾</button>
     <div    id="lcgpt-float-menu"  style="display:none"></div>
   `;
 
   const menu = wrap.querySelector("#lcgpt-float-menu");
+  // Prompt titles are the user's own text and go in as text, never as markup.
+  wrap.querySelector("#lcgpt-float-main").textContent =
+    defaultPrompt ? `✦ ${defaultPrompt.title}` : "✦ Ask…";
 
   function openMenu() {
+    // A handler left over from an earlier menu still holds that menu's search
+    // text and highlight, and would act on them on the next Enter — firing a
+    // prompt nothing on screen shows as chosen. Only one may ever be attached.
+    closeMenuKeyHandler();
     _menuOpen = true;
     // The search input intentionally never receives browser focus (no .focus() call,
     // and mousedown on the button is already e.preventDefault()'d). All keyboard
@@ -206,16 +298,18 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     const listEl      = menu.querySelector("#lcgpt-float-list");
 
     function renderList(filter) {
-      const filtered = filter
-        ? prompts.filter((p) => p.title.toLowerCase().includes(filter.toLowerCase()))
-        : prompts;
-      listEl.innerHTML = filtered.map((p) =>
-        `<div class="lcgpt-menu-item" data-id="${p.id}">${esc(p.title)}</div>`
-      ).join("");
-      listEl.querySelectorAll(".lcgpt-menu-item").forEach((item) => {
+      const needle = filter.toLowerCase();
+      listEl.textContent = "";
+      for (const p of prompts) {
+        if (needle && !p.title.toLowerCase().includes(needle)) continue;
+        const item = document.createElement("div");
+        item.className   = "lcgpt-menu-item";
+        item.dataset.id  = p.id;          // read back by the Enter key handler
+        item.textContent = p.title;
         item.addEventListener("mouseover", () => setHighlight(item));
-        item.onclick = () => { hideFloatingButton(); runFloatingPrompt(parseInt(item.dataset.id)); };
-      });
+        item.addEventListener("click", () => { hideFloatingButton(); runFloatingPrompt(p.id); });
+        listEl.appendChild(item);
+      }
     }
 
     function getHighlighted() { return listEl.querySelector(".lcgpt-menu-item--active"); }
@@ -227,7 +321,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
     function handleMenuKey(e) {
       // hideFloatingButton() sets _menuOpen = false; that's the authoritative signal to clean up.
-      if (!_menuOpen) { document.removeEventListener("keydown", handleMenuKey, true); return; }
+      if (!_menuOpen) { closeMenuKeyHandler(); return; }
 
       const items = [...listEl.querySelectorAll(".lcgpt-menu-item")];
       const hi    = getHighlighted();
@@ -237,7 +331,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         e.preventDefault(); e.stopPropagation();
         _menuOpen = false;
         menu.style.display = "none";
-        document.removeEventListener("keydown", handleMenuKey, true);
+        closeMenuKeyHandler();
       } else if (e.key === "ArrowDown") {
         e.preventDefault(); e.stopPropagation();
         if (items.length) setHighlight(items[Math.min(idx + 1, items.length - 1)]);
@@ -246,7 +340,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
         if (idx <= 0) setHighlight(null); else setHighlight(items[idx - 1]);
       } else if (e.key === "Enter") {
         e.preventDefault(); e.stopPropagation();
-        document.removeEventListener("keydown", handleMenuKey, true);
+        closeMenuKeyHandler();
         if (hi) {
           hideFloatingButton();
           runFloatingPrompt(parseInt(hi.dataset.id));
@@ -269,10 +363,17 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
       }
     }
 
+    _menuKeyHandler = handleMenuKey;
     document.addEventListener("keydown", handleMenuKey, true);
 
     renderList("");
     menu.style.display = "block";
+  }
+
+  function closeMenu() {
+    _menuOpen = false;
+    menu.style.display = "none";
+    closeMenuKeyHandler();
   }
 
   wrap.querySelector("#lcgpt-float-main").onclick = () => {
@@ -282,7 +383,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
 
   wrap.querySelector("#lcgpt-float-arrow").onclick = (e) => {
     e.stopPropagation();
-    if (menu.style.display === "none") openMenu(); else { _menuOpen = false; menu.style.display = "none"; }
+    if (menu.style.display === "none") openMenu(); else closeMenu();
   };
 
   // Capture selection context now — focus shifts when the button is clicked,
@@ -306,7 +407,7 @@ function showFloatingButton(sel, prompts, defaultPrompt) {
     x: Math.round(rect.left + window.scrollX),
     y: Math.round(rect.top  + window.scrollY) - 36,
   };
-  btn.style.display = "block";
+  setImportant(btn, "display", "block");
   updateFloatingButtonPosition();
 }
 
@@ -318,22 +419,28 @@ function updateFloatingButtonPosition() {
   const y = _buttonPagePos.y - window.scrollY;
   // Hide once the anchor has scrolled well out of view
   if (y < -50 || y > window.innerHeight + 50) { hideFloatingButton(); return; }
-  btn.style.left = `${x}px`;
-  btn.style.top  = `${Math.max(4, y)}px`;
+  setImportant(btn, "left", `${x}px`);
+  setImportant(btn, "top",  `${Math.max(4, y)}px`);
 }
 
 function hideFloatingButton() {
   _menuOpen = false;
+  closeMenuKeyHandler();
   const btn = document.getElementById("lcgpt-float-btn");
-  if (btn) btn.style.display = "none";
+  if (btn) setImportant(btn, "display", "none");
   _buttonPagePos = null;
 }
 
+// The single answer to "can text be swapped in here?", used both to pick the
+// output mode for a custom query and to carry it out. The input types listed are
+// exactly those that expose selectionStart/selectionEnd — input[type=email] and
+// [type=number] do not, so they count as not editable rather than as fields the
+// replacement would silently fail on.
 function isEditableElement(el) {
   if (!el) return false;
   if (el.isContentEditable) return true;
   const tag = el.tagName.toLowerCase();
-  return tag === "textarea" || (tag === "input" && /^(text|search|url|email|tel)$/.test(el.type || "text"));
+  return tag === "textarea" || (tag === "input" && /^(text|search|url|tel)$/.test(el.type || "text"));
 }
 
 function runFloatingPrompt(promptId) {
@@ -368,39 +475,51 @@ initFloatingButton();
 
 // ── Result dialog ─────────────────────────────────────────────────────────────
 
-function displayResult(lookup) {
-  if (lookup.prompt.outputMode === "replace") {
-    replaceSelectedText(lookup.lookupResult);
-    return;
-  }
+// Get or create the shadow host. The shadow root completely isolates the panel
+// from host-page CSS — including rules with !important — so no all:initial /
+// all:unset tricks are needed inside the panel styles.
+function resultShadowRoot(lookup) {
+  const existing = document.getElementById("lcgpt-result-container");
+  if (existing) return existing.shadowRoot;
 
-  // Get or create the shadow host. The shadow root completely isolates the
-  // panel from host-page CSS — including rules with !important — so no
-  // all:initial / all:unset tricks are needed inside the panel styles.
-  let host = document.getElementById("lcgpt-result-container");
-  let shadow;
-  if (!host) {
-    host    = document.createElement("div");
-    host.id = "lcgpt-result-container";
-    document.body.appendChild(host);
-    shadow  = host.attachShadow({ mode: "open" });
-    const style       = document.createElement("style");
-    // Silently migrate stored CSS that still uses #lcgpt-result-container
-    // instead of the shadow-DOM :host selector.
-    style.textContent = lookup.options.defaultPopupStyle
-      .replace(/#lcgpt-result-container\b/g, ":host");
-    shadow.appendChild(style);
-  } else {
-    shadow = host.shadowRoot;
-  }
+  const host = document.createElement("div");
+  host.id    = "lcgpt-result-container";
+  document.body.appendChild(host);
+  const shadow = host.attachShadow({ mode: "open" });
+  const style  = document.createElement("style");
+  // Silently migrate stored CSS that still uses #lcgpt-result-container
+  // instead of the shadow-DOM :host selector.
+  style.textContent = (lookup.options?.defaultPopupStyle || "")
+    .replace(/#lcgpt-result-container\b/g, ":host");
+  shadow.appendChild(style);
+  // The :host block stays in the sheet, but it is the copy on the style
+  // attribute that actually holds against the page. The fallbacks go on first so
+  // a stylesheet with no :host rules of its own still floats above the page
+  // instead of landing in its flow; anything it does declare wins over them.
+  hardenShadowHost(host, [...PANEL_HOST_FALLBACK, ...hostDeclarations(style)]);
+  return shadow;
+}
+
+// Draws the panel skeleton for a lookup, or returns the one already on screen for
+// it. Both the "working on it" placeholder and the finished answer render through
+// here, so the answer replaces the placeholder in place rather than stacking.
+function panelFor(lookup) {
+  const shadow   = resultShadowRoot(lookup);
+  // Number() keeps this a safe selector whatever arrives; a bogus id simply misses.
+  const existing = lookup.requestId
+    ? shadow.querySelector(`.lcgpt-panel-wrap[data-req="${Number(lookup.requestId)}"]`)
+    : null;
+  if (existing) return existing;
 
   // followUpRounds = 0 means one-shot: hide the follow-up input box entirely
   const showFollowUp = (lookup.prompt.followUpRounds ?? 1) > 0;
 
   const dialog = document.createElement("div");
+  dialog.className = "lcgpt-panel-wrap";
+  if (lookup.requestId) dialog.dataset.req = String(lookup.requestId);
   dialog.innerHTML = `
-    <div class="lcgpt-result-panel" style="${lookup.prompt.popupStyle}">
-      <b class="lcgpt-title">[${esc(lookup.prompt.title)}: ${esc(lookup.prompt.userContent)}]</b>
+    <div class="lcgpt-result-panel">
+      <b class="lcgpt-title"></b>
       <div class="lcgpt-message"></div>
       ${showFollowUp
         ? `<div class="lcgpt-question" contenteditable placeholder="Ask a follow-up…"></div>`
@@ -411,11 +530,15 @@ function displayResult(lookup) {
       </div>
     </div>
   `;
-  // API response must never be injected as HTML — use textContent to prevent XSS.
-  dialog.querySelector(".lcgpt-message").textContent = lookup.lookupResult;
-  shadow.appendChild(dialog);
+  // The per-prompt CSS is set as a property, never interpolated into a style
+  // attribute: an ordinary declaration like font-family: "Segoe UI" contains
+  // quotes, which would close the attribute and turn the rest into stray
+  // attributes on the element.
+  dialog.querySelector(".lcgpt-result-panel").style.cssText = lookup.prompt.popupStyle || "";
+  // Neither the prompt title nor the user's text is trusted as markup.
+  dialog.querySelector(".lcgpt-title").textContent =
+    `[${lookup.prompt.title}: ${lookup.prompt.userContent}]`;
 
-  // Dismiss
   dialog.querySelector(".lcgpt-btn-dismiss").addEventListener("click", () => dialog.remove());
 
   // Regenerate — re-runs the original prompt, clearing any follow-up state
@@ -426,9 +549,36 @@ function displayResult(lookup) {
     chrome.runtime.sendMessage({ action: "relookup", lookup });
   });
 
-  if (!showFollowUp) return;
+  shadow.appendChild(dialog);
+  return dialog;
+}
+
+// Shown the moment a request goes out, so there is never a silent gap between
+// clicking and an answer arriving.
+function showPendingPanel(lookup) {
+  if (!document.body) return;
+  panelFor(lookup).querySelector(".lcgpt-message").textContent = "…";
+}
+
+function displayResult(lookup, failed) {
+  if (lookup.prompt.outputMode === "replace" && !failed) {
+    // Falls back to the popup when there is nothing replaceable in focus, rather
+    // than dropping an answer that has already been paid for.
+    if (replaceSelectedText(lookup.lookupResult)) return;
+  }
+  if (!document.body) return;
+
+  const dialog = panelFor(lookup);
+  // API response must never be injected as HTML — use textContent to prevent XSS.
+  dialog.querySelector(".lcgpt-message").textContent =
+    failed ? `⚠ ${lookup.lookupResult}` : lookup.lookupResult;
 
   const questionInput = dialog.querySelector(".lcgpt-question");
+  // followUpRounds = 0 hides the box; the panel may also already be wired if a
+  // result somehow arrives twice for the same request.
+  if (!questionInput || dialog.dataset.followUpWired) return;
+  dialog.dataset.followUpWired = "1";
+
   questionInput.addEventListener("keypress", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -464,28 +614,40 @@ function displayResult(lookup) {
 
 // ── Replace selected text ─────────────────────────────────────────────────────
 
+// Returns true when the text actually went somewhere, false when there was
+// nowhere to put it. The caller shows the answer in the popup instead of
+// discarding it — the request has already been made and paid for either way.
 function replaceSelectedText(text) {
-  const sel = window.getSelection();
-  const el  = document.activeElement;
+  const el = document.activeElement;
+  if (!isEditableElement(el)) return false;
 
-  if (el.tagName.toLowerCase() === "textarea" ||
-      (el.tagName.toLowerCase() === "input" && el.type === "text")) {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "textarea" || tag === "input") {
     const start = el.selectionStart;
     const end   = el.selectionEnd;
+    // Fields such as input[type=email] disallow selectionStart/End entirely.
+    if (start == null || end == null) return false;
     el.value = el.value.slice(0, start) + text + el.value.slice(end);
     el.selectionStart = el.selectionEnd = start + text.length;
-
-  } else if (el.isContentEditable) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    const node = document.createTextNode(text);
-    range.insertNode(node);
-    // Move caret to end of inserted text
-    range.selectNodeContents(node);
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    // Frameworks that mirror the field into their own state need to be told.
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    return true;
   }
+
+  // contenteditable
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+  // Move caret to end of inserted text
+  range.selectNodeContents(node);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 }
 
 })();
