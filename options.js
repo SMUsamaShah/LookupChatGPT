@@ -56,7 +56,7 @@ $("selectionButtonEnabled").addEventListener("change", (e) => {
     checkbox.checked = false;
     persistSelectionButtonEnabled(false);
     alert("The floating button needs permission to run on every page.\n\n" +
-          "Without it, you can still use the right-click menu and the toolbar button.");
+          "The right-click menu and the toolbar button work without it.");
   });
 });
 
@@ -157,7 +157,7 @@ function populatePromptTable(prompts, defaultPromptId = 0) {
 }
 
 function resetPrompts() {
-  if (!confirm("Reset all prompts to the defaults?\n\nNothing is kept until you click Save.")) return;
+  if (!confirm("Reset all prompts to the defaults?\n\nClick Save to keep this change.")) return;
   populatePromptTable(makeDefaultPrompts());
 }
 

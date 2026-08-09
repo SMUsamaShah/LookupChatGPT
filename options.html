@@ -284,7 +284,7 @@
       <option value="google">Google Gemini</option>
       <option value="openrouter">OpenRouter</option>
     </select>
-    <span class="hint" style="margin:0">Prompts use this unless they choose their own.</span>
+    <span class="hint" style="margin:0">Prompts use this provider unless they set their own.</span>
   </div>
 </section>
 
@@ -299,8 +299,8 @@
       Show a floating <b>✦</b> button when text is selected
     </label>
     <div class="row-note">
-      Off by default. The button needs permission to run on every page.
-      Without it, you can still use the right-click menu and the toolbar button.
+      Off by default. This button needs permission to run on every page.
+      The right-click menu and the toolbar button work without it.
     </div>
   </div>
 
@@ -312,13 +312,13 @@
   <div class="behavior-row">
     <label class="stack-label" for="customQueryOutputMode">Where to show the answer to a question you type</label>
     <select id="customQueryOutputMode">
-      <option value="auto">Auto: replace the text if you can edit it, else show a popup</option>
+      <option value="auto">Auto: replace the text when you can edit it, otherwise show a popup</option>
       <option value="popup">Always show a popup</option>
       <option value="replace">Always replace the text</option>
     </select>
     <div class="row-note">
-      This is only for questions you type yourself. Saved prompts have their own
-      setting, in the Output column below.
+      This setting only affects questions you type yourself. Saved prompts have their
+      own setting in the Output column below.
     </div>
   </div>
 
@@ -334,7 +334,7 @@
 <!-- ── Sync ──────────────────────────────────────────────────────── -->
 <section class="card">
   <h2>Sync</h2>
-  <p class="hint">Copy your settings to your other computers, using your browser account.</p>
+  <p class="hint">Copy your settings to your other computers. This uses your browser account.</p>
 
   <div class="behavior-row">
     <label>
@@ -348,8 +348,8 @@
       Include API keys in sync
     </label>
     <div class="row-note">
-      Off by default. Your prompts and settings are always copied. API keys are not,
-      unless you turn this on. Everything copied is uploaded to your browser account.
+      Off by default. Your prompts and settings are always copied. API keys are
+       copied only if you turn this on. Copied settings are stored in your browser account.
     </div>
   </div>
 </section>
@@ -360,8 +360,8 @@
     <summary>Style of the answer box (CSS)</summary>
     <div class="details-body">
       <p class="hint">
-        This styles the box that shows the answer. <code>:host</code> is the outer box.
-        Set its position, size and font there.
+        This styles the box that shows the answer. Use <code>:host</code> to set the
+        position, size and font of the outer box.
       </p>
       <textarea id="defaultPopupStyle" spellcheck="false"></textarea>
       <button id="resetCSS">Reset to default</button>
@@ -419,7 +419,7 @@
 
 <div class="actionbar">
   <div class="actionbar-inner">
-    <p class="hint">Your changes are only kept when you click Save.</p>
+    <p class="hint">Click Save to keep your changes.</p>
     <button id="savePrompts" class="primary">Save</button>
   </div>
 </div>
